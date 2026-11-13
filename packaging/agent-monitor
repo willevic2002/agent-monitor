@@ -121,7 +121,9 @@ def window(url):
         u = cmd.get_arguments()[-1]  # fresh one-time login URL from this launch
         if a.get_windows():  # already open: re-login (server may have restarted) and raise it
             w = a.get_windows()[0]; w.get_child().load_uri(u); w.present(); return 0
-        view = WebKit2.WebView.new_with_context(WebKit2.WebContext.new_ephemeral())
+        # allow audio autoplay: read-aloud starts when a reply arrives, not on a click (origin-locked by policy())
+        view = WebKit2.WebView(web_context=WebKit2.WebContext.new_ephemeral(),
+                               website_policies=WebKit2.WebsitePolicies(autoplay=WebKit2.AutoplayPolicy.ALLOW))
         view.connect("decide-policy", policy)
         w = Gtk.ApplicationWindow(application=a, title="Agent Monitor")
         w.set_default_size(1440, 900)
