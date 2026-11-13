@@ -179,7 +179,7 @@ MAX_BODY = 1024 * 1024  # 1 MiB
 ONCE_TTL, ONCE_MAX = 30, 16
 SID_RE = re.compile(r"^[0-9a-f-]{36}$")
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-       "img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'")
+       "img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'")
 MAX_PROMPT = 100_000
 
 
@@ -325,8 +325,9 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/tts":
             text = body.get("text")
             if not isinstance(text, str) or not 1 <= len(text) <= 5000: return self._json(400, {"error": "bad text"})
-            try: return self._send(200, voice.tts(text), "audio/wav")
+            try: voice.say(text); return self._json(200, {})
             except Exception as e: return self._json(503, {"error": f"voice unavailable: {e}"[:300]})
+        if u.path == "/api/tts/stop": voice.hush(); return self._json(200, {})
         if u.path in ("/api/stt/start", "/api/stt/stop"):
             if not voice.status()["stt"]: return self._json(503, {"error": "speech-to-text not installed (packaging/install-voice.sh)"})
             try:

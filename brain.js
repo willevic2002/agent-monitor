@@ -451,18 +451,13 @@ function speak(text) {
   const t = clean(text); if (!t) return;
   queue.push(t); if (!audio) next();
 }
-async function next() {
+async function next() {   // the server speaks (pw-play) and answers when done; `audio` marks the current chain
   const t = queue.shift(); if (!t || !voiceOn) { audio = null; return; }
-  audio = {};
-  try {
-    const r = await fetch("/api/tts", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: t }) });
-    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
-    const url = URL.createObjectURL(await r.blob()), a = audio = new Audio(url);
-    a.onended = a.onerror = () => { URL.revokeObjectURL(url); next(); };
-    await a.play();
-  } catch (x) { err("Voice: " + x.message); audio = null; }
+  const me = audio = {};
+  try { await api("/api/tts", { text: t }); if (audio === me) next(); }
+  catch (x) { err("Voice: " + x.message); if (audio === me) { queue.length = 0; audio = null; } }
 }
-function hush() { queue.length = 0; if (audio && audio.pause) audio.pause(); audio = null; }
+function hush() { queue.length = 0; if (audio) api("/api/tts/stop", {}).catch(() => {}); audio = null; }
 function setVoice(on) {
   voiceOn = on; store.set("am.voice", on ? "1" : "0");
   $("#spk").setAttribute("aria-pressed", on);

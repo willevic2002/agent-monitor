@@ -184,5 +184,14 @@ assert call("POST", "/api/tts", {"text": "hej"})[0] == 503
 for t in ("", None, "x" * 5001): assert call("POST", "/api/tts", {"text": t})[0] == 400, t
 assert call("POST", "/api/stt/start", {})[0] == 503
 assert call("POST", "/api/stt/stop", {})[0] == 503
+# speaking: played server-side by pw-play; /api/tts/stop cuts it off and the temp wav is removed
+fake = tempfile.mkdtemp(); open(os.path.join(fake, "pw-play"), "w").write("#!/bin/sh\necho \"$1\" > \"$(dirname \"$0\")/arg\"; sleep 30\n")
+os.chmod(os.path.join(fake, "pw-play"), 0o755); os.environ["PATH"] = fake + ":" + os.environ["PATH"]
+voice.tts = lambda t: b"RIFF"
+res = []; th = threading.Thread(target=lambda: res.append(call("POST", "/api/tts", {"text": "hej"}))); th.start()
+until(lambda: os.path.exists(os.path.join(fake, "arg")), "pw-play started")
+t0 = time.time(); assert call("POST", "/api/tts/stop", {}) == (200, {})
+th.join(5); assert res == [(200, {})] and time.time() - t0 < 3, res
+assert not os.path.exists(open(os.path.join(fake, "arg")).read().strip())
 httpd.shutdown()
 print("ok")

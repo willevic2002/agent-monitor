@@ -37,7 +37,7 @@ Use another port with `AM_PORT=7788 packaging/install.sh`. The service looks for
 ## Voice (optional, fully local)
 
 ```sh
-sudo pacman -S --needed uv pipewire ffmpeg gst-plugins-good
+sudo pacman -S --needed uv pipewire ffmpeg
 packaging/install-voice.sh && systemctl --user restart agent-monitor
 ```
 

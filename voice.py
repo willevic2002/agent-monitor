@@ -15,6 +15,7 @@ MAX_REC = 120       # seconds; a stuck "hold" can't record forever
 _lock = threading.Lock()
 _rec = None         # (Popen, wav path) while recording
 _stt = None         # persistent worker: keeps the whisper model loaded between utterances
+_play = None        # pw-play process while speaking
 
 
 CONF = os.path.join(os.environ.get("AM_CONFIG_DIR") or os.path.expanduser("~/.config/agent-monitor"), "voice.json")
@@ -37,7 +38,7 @@ def _model():
 
 
 def status():
-    return {"tts": os.path.exists(PIPER) and os.path.exists(_model()), "stt": os.path.exists(PY) and _which("pw-record")}
+    return {"tts": os.path.exists(PIPER) and os.path.exists(_model()) and _which("pw-play"), "stt": os.path.exists(PY) and _which("pw-record")}
 
 
 def _which(c):
@@ -54,6 +55,27 @@ def tts(text):
     f = subprocess.run(["ffmpeg", "-v", "error", "-i", "pipe:0", "-af", FX, "-f", "wav", "pipe:1"], input=r.stdout,
                        capture_output=True, timeout=30)
     return f.stdout if f.returncode == 0 and f.stdout else r.stdout
+
+
+def say(text):
+    """Speak text on this machine's default output. Played here, not in the WebKit window: its media stack
+    needs extra GStreamer plugins, autoplay rights, and stalled on blob audio. Blocks until done or hush()."""
+    global _play
+    wav = tts(text)
+    fd, path = tempfile.mkstemp(prefix="am-tts-", suffix=".wav")
+    try:
+        with os.fdopen(fd, "wb") as f: f.write(wav)
+        with _lock:
+            _play = p = subprocess.Popen(["pw-play", path], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try: p.wait(timeout=300)
+        except subprocess.TimeoutExpired: p.kill()
+    finally:
+        os.unlink(path)
+
+
+def hush():
+    with _lock: p = _play
+    if p and p.poll() is None: p.terminate()
 
 
 def rec_start():

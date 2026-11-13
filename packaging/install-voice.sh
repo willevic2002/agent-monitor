@@ -9,8 +9,6 @@ HF=https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_GB/alan/medi
 if [ "${1:-}" = "--uninstall" ]; then rm -rf "$DIR"; echo "removed $DIR"; exit 0; fi
 command -v uv >/dev/null || { echo "needs uv: sudo pacman -S uv" >&2; exit 1; }
 command -v pw-record >/dev/null || { echo "needs PipeWire's pw-record: sudo pacman -S pipewire" >&2; exit 1; }
-# WebKit plays the replies through GStreamer; without autoaudiosink the web process aborts
-gst-inspect-1.0 autoaudiosink >/dev/null 2>&1 || { echo "needs GStreamer autoaudiosink: sudo pacman -S gst-plugins-good" >&2; exit 1; }
 mkdir -p "$DIR"
 echo "+ venv $DIR/venv (python 3.12)"
 uv venv -q --allow-existing --python 3.12 "$DIR/venv"
