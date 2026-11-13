@@ -174,5 +174,15 @@ ls = stdin_lines(); i = max(n for n, l in enumerate(ls) if l.get("type") == "con
 assert ls[i]["response"]["response"] == {"behavior": "deny", "message": "Avbruten i Agent Monitor"}
 assert any(l.get("request", {}).get("subtype") == "interrupt" for l in ls[i:])
 s.close()
+
+# voice not installed: 503, bad text 400
+import voice
+def _no_tts(t): raise FileNotFoundError("piper")
+voice.status, voice.tts = (lambda: {"tts": False, "stt": False}), _no_tts
+assert call("GET", "/api/voice") == (200, {"tts": False, "stt": False})
+assert call("POST", "/api/tts", {"text": "hej"})[0] == 503
+for t in ("", None, "x" * 5001): assert call("POST", "/api/tts", {"text": t})[0] == 400, t
+assert call("POST", "/api/stt/start", {})[0] == 503
+assert call("POST", "/api/stt/stop", {})[0] == 503
 httpd.shutdown()
 print("ok")

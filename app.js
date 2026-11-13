@@ -473,7 +473,7 @@ async function tick() {
     const r = await fetch("/api/state", { cache: "no-store", credentials: "same-origin" });
     if (r.status === 401 || r.status === 403) {
       stopped = true; live.className = "live off"; live.lastChild.textContent = "ej inloggad";
-      msg("Ogiltig token. Starta om appen via startaren.", true); return;
+      msg("Invalid token. Restart the app from the launcher.", true); return;
     }
     if (!r.ok) throw 0;
     last = await r.json(); delay = 1500;

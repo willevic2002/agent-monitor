@@ -292,6 +292,7 @@ function renderPerms(list) {
   const ids = new Set(list.map(p => p.request_id));
   for (const [id, c] of cards) if (!ids.has(id)) { c.remove(); cards.delete(id); }
   for (const p of list) if (!cards.has(p.request_id)) {
+    speak(`Permission required, sir. ${p.tool_name}.`);
     const m = meta(p.node), c = document.createElement("div");
     c.className = "card"; c.style.setProperty("--c", color(p.node));
     c.innerHTML = `<div class="ph"><span class="tag"></span><span class="t"></span></div><code></code><div class="why"></div>
@@ -304,7 +305,7 @@ function renderPerms(list) {
     const answer = async behavior => {
       c.querySelectorAll("button").forEach(b => b.disabled = true);
       try { await api(`/api/sessions/${sid}/permission`, { request_id: p.request_id, behavior }); c.classList.add("gone"); pulse(p.node, 1.2); }
-      catch (e) { err("Kunde inte svara: " + e.message); c.querySelectorAll("button").forEach(b => b.disabled = false); }
+      catch (e) { err("Could not answer: " + e.message); c.querySelectorAll("button").forEach(b => b.disabled = false); }
     };
     c.querySelector(".ok").onclick = () => answer("allow");
     c.querySelector(".no").onclick = () => answer("deny");
@@ -330,7 +331,7 @@ const err = t => { $("#err").textContent = t || ""; };
 async function api(path, body) {
   const r = await fetch(path, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   let j = null; try { j = await r.json(); } catch {}
-  if (r.status === 401 || r.status === 403) throw new Error("ogiltig token, starta om appen via startaren");
+  if (r.status === 401 || r.status === 403) throw new Error("invalid token, restart the app from the launcher");
   if (!r.ok) throw new Error((j && j.error) || `HTTP ${r.status}`);
   return j;
 }
@@ -343,7 +344,7 @@ function onEv(e) {
   if (e.type === "assistant" && Array.isArray(c)) {
     pulse(node, 0.9);
     for (const b of c) {
-      if (b.type === "text" && b.text) say(node === "lead" ? "LEAD" : meta(node).code, b.text, color(node), node);
+      if (b.type === "text" && b.text) { say(node === "lead" ? "LEAD" : meta(node).code, b.text, color(node), node); if (node === "lead") speak(b.text); }
       else if (b.type === "tool_use" && (b.name === "Agent" || b.name === "Task")) {
         const i = b.input || {}; meta(b.id, short(i.subagent_type));
         say(meta(node).code, `→ dispatch ${short(i.subagent_type)}: ${trunc(i.description || "", 120)}`, color(node), node);
@@ -356,6 +357,7 @@ function onEv(e) {
     say("DONE", e.summary || "done", color(e.tool_use_id), e.tool_use_id);
   } else if (e.type === "result") {
     const bad = e.is_error || (e.subtype && e.subtype !== "success");
+    speak(bad ? "The run was interrupted, sir." : "Done, sir.");
     say(bad ? "✕" : "✓", `${bad ? "interrupted/error" : "done"}${e.total_cost_usd != null ? " · $" + e.total_cost_usd.toFixed(2) : ""}${e.duration_ms != null ? " · " + (e.duration_ms / 1000).toFixed(1) + " s" : ""}`);
   } else if (e.type === "am_exit") say("—", "session ended");
 }
@@ -378,7 +380,7 @@ function reset() {
 }
 function syncLeadIdle() { layoutBlobs(); const b = blobs.get("lead"); b.status = "idle"; b.pill.innerHTML = "<i>A-01</i>Lead"; }
 function connect(id) {
-  reset(); sid = id; store.set("am.brain", id || "");
+  reset(); sid = id; store.set("am.brain", id || ""); connectedAt = Date.now();
   $("#empty").hidden = !!id;
   $("#hmid").textContent = id ? "connecting…" : "new session";
   setBusy(false);
@@ -394,7 +396,7 @@ let sessions = [];
 async function loadSessions() {
   try {
     const r = await fetch("/api/sessions", { cache: "no-store", credentials: "same-origin" });
-    if (r.status === 401 || r.status === 403) { err("Ogiltig token. Starta om appen via startaren."); return; }
+    if (r.status === 401 || r.status === 403) { err("Invalid token. Restart the app from the launcher."); return; }
     if (!r.ok) return;
     sessions = await r.json();
   } catch { return; }
@@ -434,6 +436,58 @@ $("#f").onsubmit = async e => {
   inflight = false;
 };
 addEventListener("keydown", e => { if (e.key === "Escape" && document.activeElement.tagName !== "INPUT") setFocus(null); });
+
+// ---------- voice (optional, local Piper + whisper; see packaging/install-voice.sh) ----------
+let voiceOn = store.get("am.voice") === "1", connectedAt = 0, audio = null;
+const queue = [];
+function clean(t) {   // what's worth saying out loud: no code, links or markdown noise, ~2 sentences' worth
+  t = t.replace(/```[\s\S]*?```/g, " ").replace(/`[^`]*`/g, " ").replace(/https?:\/\/\S+/g, " ").replace(/[#*_>|]+/g, " ").replace(/\s+/g, " ").trim();
+  if (t.length <= 400) return t;
+  const cut = t.slice(0, 400), end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("? "), cut.lastIndexOf("! "));
+  return end > 120 ? cut.slice(0, end + 1) : cut + "…";
+}
+function speak(text) {
+  if (!voiceOn || Date.now() - connectedAt < 2000) return;   // don't read out the history replayed on connect
+  const t = clean(text); if (!t) return;
+  queue.push(t); if (!audio) next();
+}
+async function next() {
+  const t = queue.shift(); if (!t || !voiceOn) { audio = null; return; }
+  audio = {};
+  try {
+    const r = await fetch("/api/tts", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: t }) });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+    const url = URL.createObjectURL(await r.blob()), a = audio = new Audio(url);
+    a.onended = a.onerror = () => { URL.revokeObjectURL(url); next(); };
+    await a.play();
+  } catch (x) { err("Voice: " + x.message); audio = null; }
+}
+function hush() { queue.length = 0; if (audio && audio.pause) audio.pause(); audio = null; }
+function setVoice(on) {
+  voiceOn = on; store.set("am.voice", on ? "1" : "0");
+  $("#spk").setAttribute("aria-pressed", on); $("#spk").textContent = on ? "🔊" : "🔈";
+  if (!on) hush();
+}
+$("#spk").onclick = () => setVoice(!voiceOn);
+
+let talking = false;
+async function talk(on) {
+  if (on === talking) return; talking = on; $("#mic").classList.toggle("on", on);
+  if (on) { hush(); try { await api("/api/stt/start", {}); } catch (x) { err("Mic: " + x.message); } return; }
+  $("#q").placeholder = "Transcribing…";
+  try {
+    const { text } = await api("/api/stt/stop", {});
+    if (text) { $("#q").value = text; $("#f").requestSubmit(); }
+  } catch (x) { err("Mic: " + x.message); }
+  $("#q").placeholder = "Ask the lead anything… (slash commands work too)";
+}
+$("#mic").onpointerdown = e => { e.preventDefault(); talk(true); };
+$("#mic").onpointerup = $("#mic").onpointerleave = () => talking && talk(false);
+addEventListener("keydown", e => { if (e.code === "Space" && !e.repeat && !$("#mic").hidden && !/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)) { e.preventDefault(); talk(true); } });
+addEventListener("keyup", e => { if (e.code === "Space" && talking) talk(false); });
+fetch("/api/voice", { credentials: "same-origin" }).then(r => r.ok ? r.json() : {}).then(v => {
+  $("#spk").hidden = !v.tts; $("#mic").hidden = !v.stt; if (v.tts) setVoice(voiceOn);
+}).catch(() => {});
 
 // ---------- boot ----------
 setInterval(() => {

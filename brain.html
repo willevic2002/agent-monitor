@@ -159,6 +159,11 @@ form button.stop{background:var(--red);box-shadow:0 0 16px var(--red)}
 #empty{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--dim);letter-spacing:.14em;text-transform:uppercase;font-size:10px;pointer-events:none!important;text-align:center}
 header a{color:var(--dim);text-decoration:none;border:1px solid var(--edge);border-radius:8px;padding:6px 10px;letter-spacing:.14em}
 header a:hover{color:var(--text)}
+.hb{background:transparent;border:1px solid var(--edge);border-radius:8px;padding:5px 9px;cursor:pointer;color:var(--dim);font:inherit}
+.hb[aria-pressed=true]{color:var(--cyan);border-color:var(--cyan);box-shadow:0 0 12px -2px var(--cyan)}
+form button.mic{background:transparent;border:1px solid var(--edge);box-shadow:none}
+form button.mic.on{background:var(--red);box-shadow:0 0 18px var(--red);animation:throb 1s infinite}
+@keyframes throb{50%{transform:scale(1.12)}}
 #stats{top:52px;bottom:auto}
 #stats b{font-size:18px}
 #stats span{white-space:nowrap}
@@ -175,6 +180,7 @@ header a:hover{color:var(--text)}
     <span id="hmid">no session</span>
     <span class="sp"></span>
     <select id="sess" aria-label="Session" class="btn"></select>
+    <button type="button" id="spk" class="hb" aria-pressed="false" title="Voice: read the lead's replies aloud" hidden>🔈</button>
     <a href="/">Graph</a>
     <span id="clock"></span>
   </header>
@@ -185,7 +191,7 @@ header a:hover{color:var(--text)}
     <section class="panel" id="chat" style="--c:var(--cyan);flex:1.5"><div class="ph"><span class="tag">02</span><span class="t">Chat</span><span class="live" id="chatf" title="Back to the lead chat" style="cursor:pointer">lead</span></div>
       <div id="msgs" aria-live="polite"></div>
       <div id="cards" aria-live="assertive"></div>
-    <form id="f"><span class="who">LEAD</span><input id="cwd" class="cwd" aria-label="Working directory" title="Working directory for a new session" autocomplete="off"><select id="mode" class="cwd" aria-label="Permission mode" title="Permission mode"><option value="default">Ask me</option><option value="acceptEdits">Accept edits</option><option value="auto">Auto — runs on its own</option><option value="plan">Plan mode</option></select><input id="q" placeholder="Ask the lead anything… (slash commands work too)" autocomplete="off" aria-label="Prompt"><button id="go" aria-label="Send">↑</button><button type="button" id="stop" class="stop" aria-label="Stop" hidden>■</button></form>
+    <form id="f"><span class="who">LEAD</span><input id="cwd" class="cwd" aria-label="Working directory" title="Working directory for a new session" autocomplete="off"><select id="mode" class="cwd" aria-label="Permission mode" title="Permission mode"><option value="default">Ask me</option><option value="acceptEdits">Accept edits</option><option value="auto">Auto — runs on its own</option><option value="plan">Plan mode</option></select><input id="q" placeholder="Ask the lead anything… (slash commands work too)" autocomplete="off" aria-label="Prompt"><button type="button" id="mic" class="mic" aria-label="Hold to talk (or hold Space)" title="Hold to talk (or hold Space outside the text field)" hidden>🎙</button><button id="go" aria-label="Send">↑</button><button type="button" id="stop" class="stop" aria-label="Stop" hidden>■</button></form>
     <p id="err" role="alert" style="color:var(--red);margin:4px 0 0;font-size:11px"></p>
     </section>
   </div>

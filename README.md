@@ -34,6 +34,17 @@ Start it from the app menu, with `agent-monitor`, or with SUPER+ALT+A. Type a pr
 
 Use another port with `AM_PORT=7788 packaging/install.sh`. The service looks for `claude` in `~/.local/bin`, mise and `/usr/bin`. If yours lives somewhere else, edit `PATH` in `~/.config/systemd/user/agent-monitor.service`.
 
+## Voice (optional, fully local)
+
+```sh
+sudo pacman -S --needed uv pipewire ffmpeg
+packaging/install-voice.sh && systemctl --user restart agent-monitor
+```
+
+- **Voice out:** Piper reads the lead's replies aloud, and also says when a permission is needed or a run is done. Toggle it with 🔈 in the header.
+- **Voice in:** hold 🎙, or hold **Space** outside the text field, and speak. faster-whisper turns the speech into a prompt when you let go.
+- **Other voices:** put another Piper voice (`name.onnx` + `name.onnx.json`) in `~/.local/share/agent-monitor/voice/` and write `{"piper_model": "name", "fx": false}` to `~/.config/agent-monitor/voice.json`.
+
 ## Security notes
 
 - The server only listens on `127.0.0.1`. The API needs a random token, stored at `~/.config/agent-monitor/token` with mode 0600. The window logs in with a one-time nonce.

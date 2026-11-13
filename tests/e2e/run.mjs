@@ -119,7 +119,7 @@ async function scenarioUnauth(s, browser) {
   const ctx = await browser.newContext(), page = await ctx.newPage();
   const check = watch(page, "unauth", (u, st) => (st === 401 || st === 403) && /\/api\//.test(u));
   await page.goto(s.base + "/");
-  await page.getByText("Ogiltig token").waitFor();
+  await page.getByText("Invalid token").waitFor();
   assert.ok(await page.getByTestId("prompt").isDisabled(), "prompt disabled");
   const st = await page.evaluate(async () => (await fetch("/api/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: "x", cwd: "/tmp" }) })).status);
   assert.equal(st, 401);

@@ -5,7 +5,7 @@ Reads (read-only): ~/.claude/projects/**/*.jsonl transcripts, their subagents/, 
 and ~/.claude/claude-dev-team.db. Serves index.html + /api/state on http://127.0.0.1:7777
 """
 import json, os, glob, time, sqlite3, sys, re, hmac, secrets, threading
-import driver
+import driver, voice
 from urllib.parse import urlparse, parse_qs, unquote
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from graph import tail_lines, tool_label, node_log, reduce, events_from_transcript, AGENT_ID, TAIL
@@ -179,7 +179,7 @@ MAX_BODY = 1024 * 1024  # 1 MiB
 ONCE_TTL, ONCE_MAX = 30, 16
 SID_RE = re.compile(r"^[0-9a-f-]{36}$")
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-       "img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'")
+       "img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'")
 MAX_PROMPT = 100_000
 
 
@@ -280,6 +280,7 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/state":
             return self._json(200, state())
         if u.path == "/api/sessions": return self._sessions()
+        if u.path == "/api/voice": return self._json(200, voice.status())
         m = re.fullmatch(r"/api/sessions/([0-9a-f]{32})/events", u.path)
         if m:
             s = driver.get(m.group(1))
@@ -321,6 +322,17 @@ class H(BaseHTTPRequestHandler):
         except ValueError: body = None
         if not isinstance(body, dict): return self._json(400, {"error": "bad json"})
         if u.path == "/api/sessions": return self._create(body)
+        if u.path == "/api/tts":
+            text = body.get("text")
+            if not isinstance(text, str) or not 1 <= len(text) <= 5000: return self._json(400, {"error": "bad text"})
+            try: return self._send(200, voice.tts(text), "audio/wav")
+            except Exception as e: return self._json(503, {"error": f"voice unavailable: {e}"[:300]})
+        if u.path in ("/api/stt/start", "/api/stt/stop"):
+            if not voice.status()["stt"]: return self._json(503, {"error": "speech-to-text not installed (packaging/install-voice.sh)"})
+            try:
+                if u.path.endswith("start"): voice.rec_start(); return self._json(202, {})
+                return self._json(200, {"text": voice.rec_stop()})
+            except Exception as e: return self._json(500, {"error": str(e)[:300]})
         m = re.fullmatch(r"/api/sessions/([0-9a-f]{32})/prompt", u.path)
         if m:
             s, text = driver.get(m.group(1)), body.get("text")
