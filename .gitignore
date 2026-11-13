@@ -3,3 +3,4 @@ __pycache__/
 node_modules/
 test-artifacts/
 design/brain-prototype/
+HANDOVER.md
