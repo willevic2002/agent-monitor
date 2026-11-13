@@ -202,7 +202,7 @@ async function openLog(nodeId, invoker) {
     if (hbk && hbk.label) body.append(el("p", { class: "muted" }, "↩ " + hbk.label));
     if (!ents.length) body.append(el("p", { class: "muted" }, "No log yet."));
     ents.forEach(e => body.append(el("div", { class: "ent " + (e.role === "user" ? "user" : "") },
-      el("div", { class: "r" }, `${e.role || ""} ${hhmm(e.ts)} `, e.tool ? el("span", { class: "tl" }, "⚙ " + e.tool) : null),
+      el("div", { class: "r" }, `${e.role || ""} ${hhmm(e.ts)} `, e.tool ? el("span", { class: "tl" }, e.tool) : null),
       el("div", { class: "x" }, String(e.text ?? "")))));
   } catch {
     if (seq !== logSeq) return;

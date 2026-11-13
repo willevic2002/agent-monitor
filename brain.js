@@ -266,7 +266,7 @@ function renderAgents(g) {
     const c = document.createElement("span"); c.className = "c"; c.textContent = m.code;
     const t = document.createElement("span"); t.textContent = m.name + (n.description ? " · " + trunc(n.description, 40) : "");
     t.style.cssText = "white-space:nowrap;overflow:hidden;text-overflow:ellipsis";
-    const s = document.createElement("span"); s.className = "s " + n.status; s.textContent = `${SV[n.status] || n.status} · ${n.tools || 0}⚒`;
+    const s = document.createElement("span"); s.className = "s " + n.status; s.textContent = `${SV[n.status] || n.status} · ${n.tools || 0} tools`;
     b.append(c, t, s); return b;
   }));
   const tok = g.nodes.map(n => [n, n.tokens || 0]), max = Math.max(1, ...tok.map(x => x[1]));

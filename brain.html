@@ -177,9 +177,9 @@ header a:hover{color:var(--text)}
   </header>
 
   <div class="side left fade m-panels">
-    <section class="panel" style="--c:var(--cyan)"><div class="ph"><span class="tag">⚡</span><span class="t">Tool calls</span><span class="live" id="logf">all</span></div>
+    <section class="panel" style="--c:var(--cyan)"><div class="ph"><span class="tag">01</span><span class="t">Tool calls</span><span class="live" id="logf">all</span></div>
       <div class="log" id="log"></div></section>
-    <section class="panel" id="chat" style="--c:var(--cyan);flex:1.5"><div class="ph"><span class="tag">›</span><span class="t">Chat</span><span class="live" id="chatf" title="Back to the lead chat" style="cursor:pointer">lead</span></div>
+    <section class="panel" id="chat" style="--c:var(--cyan);flex:1.5"><div class="ph"><span class="tag">02</span><span class="t">Chat</span><span class="live" id="chatf" title="Back to the lead chat" style="cursor:pointer">lead</span></div>
       <div id="msgs" aria-live="polite"></div>
       <div id="cards" aria-live="assertive"></div>
     <form id="f"><span class="who">LEAD</span><input id="cwd" class="cwd" aria-label="Working directory" title="Working directory for a new session" autocomplete="off"><select id="mode" class="cwd" aria-label="Permission mode" title="Permission mode"><option value="default">Ask me</option><option value="acceptEdits">Accept edits</option><option value="auto">Auto — runs on its own</option><option value="plan">Plan mode</option></select><input id="q" placeholder="Ask the lead anything… (slash commands work too)" autocomplete="off" aria-label="Prompt"><button id="go" aria-label="Send">↑</button><button type="button" id="stop" class="stop" aria-label="Stop" hidden>■</button></form>
@@ -188,9 +188,9 @@ header a:hover{color:var(--text)}
   </div>
 
   <div class="side right fade m-panels">
-    <section class="panel" style="--c:var(--teal)"><div class="ph"><span class="tag">◉</span><span class="t">Agents</span><span class="live" id="nag">0</span></div>
+    <section class="panel" style="--c:var(--teal)"><div class="ph"><span class="tag">03</span><span class="t">Agents</span><span class="live" id="nag">0</span></div>
       <div class="agents" id="agents"></div></section>
-    <section class="panel" id="p-tok" style="--c:var(--amber);flex:0 0 auto"><div class="ph"><span class="tag">Σ</span><span class="t">Tokens · cost</span></div>
+    <section class="panel" id="p-tok" style="--c:var(--amber);flex:0 0 auto"><div class="ph"><span class="tag">04</span><span class="t">Tokens · cost</span></div>
       <div><span class="big" id="cost">$0.00</span> <span class="small" id="toktot">0 tok</span></div>
       <div class="tok" id="tok"></div></section>
   </div>
