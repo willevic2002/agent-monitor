@@ -313,6 +313,10 @@ function renderPerms(list) {
 }
 
 // ---------- chat ----------
+// WebKit has no scroll anchoring: keep the chat pinned to the bottom across resizes/reflow if it was there
+let stick = true;
+$("#msgs").addEventListener("scroll", e => { const m = e.target; if (m.clientHeight) stick = m.scrollHeight - m.scrollTop - m.clientHeight < 30; });
+new ResizeObserver(() => { if (stick) $("#msgs").scrollTop = $("#msgs").scrollHeight; }).observe($("#msgs"));
 /** Chat line owned by a node ("lead" or a subagent id); the panel shows the focused node's chat, lead's when nothing is focused. */
 function say(who, text, col, owner = "lead") {
   const box = $("#msgs"), d = document.createElement("div"), w = document.createElement("span");
