@@ -9,6 +9,7 @@ MODEL = os.path.join(VOICE_DIR, "en_GB-alan-medium.onnx")
 # "assistant in the walls" colour: short room echo + trimmed lows; skipped if ffmpeg is missing
 FX = "highpass=f=110,aecho=0.8:0.6:18|36:0.22|0.12,volume=1.4"
 WORKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "voice_stt.py")
+TTS_WORKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "voice_tts.py")
 MAX_TTS = 2000      # chars per request; the UI trims long answers anyway
 MAX_REC = 120       # seconds; a stuck "hold" can't record forever
 
@@ -16,6 +17,8 @@ _lock = threading.Lock()
 _rec = None         # (Popen, wav path) while recording
 _stt = None         # persistent worker: keeps the whisper model loaded between utterances
 _play = None        # pw-play process while speaking
+_tts = None         # (model path, persistent Piper worker)
+_tts_lock = threading.Lock()
 
 
 CONF = os.path.join(os.environ.get("AM_CONFIG_DIR") or os.path.expanduser("~/.config/agent-monitor"), "voice.json")
@@ -38,6 +41,7 @@ def _model():
 
 
 def status():
+    threading.Thread(target=_tts_worker, daemon=True).start()   # warm Piper up before the first reply
     return {"tts": os.path.exists(PIPER) and os.path.exists(_model()) and _which("pw-play"), "stt": os.path.exists(PY) and _which("pw-record")}
 
 
@@ -45,16 +49,38 @@ def _which(c):
     return any(os.access(os.path.join(p, c), os.X_OK) for p in os.environ.get("PATH", "").split(":"))
 
 
+def _tts_worker():
+    """The running Piper worker for the configured model; (re)started if missing, dead or the model changed."""
+    global _tts
+    m = _model()
+    if not (os.path.exists(PY) and os.path.exists(m)): return None
+    with _tts_lock:
+        if _tts is None or _tts[0] != m or _tts[1].poll() is not None:
+            if _tts: _tts[1].kill()
+            _tts = (m, subprocess.Popen([PY, TTS_WORKER, m], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                        stderr=subprocess.DEVNULL, text=True))
+        return _tts[1]
+
+
 def tts(text):
-    """WAV bytes for text via local Piper. Text goes via stdin, never argv."""
+    """WAV bytes for text via the local Piper worker. Text goes via stdin, never argv."""
     c = _conf()
-    r = subprocess.run([PIPER, "--model", _model(), "--length_scale", str(float(c.get("speed", 1.08))), "--output_file", "-"],
-                       input=text[:MAX_TTS].encode(), capture_output=True, timeout=60)
-    if r.returncode != 0 or not r.stdout: raise RuntimeError("piper failed: " + r.stderr.decode(errors="replace")[-200:])
-    if not c.get("fx", True) or not _which("ffmpeg"): return r.stdout
-    f = subprocess.run(["ffmpeg", "-v", "error", "-i", "pipe:0", "-af", FX, "-f", "wav", "pipe:1"], input=r.stdout,
+    fd, path = tempfile.mkstemp(prefix="am-tts-", suffix=".wav"); os.close(fd)
+    try:
+        p = _tts_worker()
+        if not p: raise RuntimeError("piper not installed")
+        with _tts_lock:   # ponytail: no read timeout, a hung worker blocks TTS (same as the STT worker)
+            p.stdin.write(json.dumps({"text": text[:MAX_TTS], "speed": float(c.get("speed", 1.08)), "path": path}) + "\n"); p.stdin.flush()
+            line = p.stdout.readline()
+        if not line: raise RuntimeError("piper worker died")
+        if json.loads(line).get("error"): raise RuntimeError("piper failed: " + json.loads(line)["error"])
+        wav = open(path, "rb").read()
+    finally:
+        os.unlink(path)
+    if not c.get("fx", True) or not _which("ffmpeg"): return wav
+    f = subprocess.run(["ffmpeg", "-v", "error", "-i", "pipe:0", "-af", FX, "-f", "wav", "pipe:1"], input=wav,
                        capture_output=True, timeout=30)
-    return f.stdout if f.returncode == 0 and f.stdout else r.stdout
+    return f.stdout if f.returncode == 0 and f.stdout else wav
 
 
 def say(text):
@@ -113,7 +139,7 @@ def rec_stop():
 
 
 def close():
-    for p in ([_rec[0]] if _rec else []) + ([_stt] if _stt else []):
+    for p in ([_rec[0]] if _rec else []) + ([_stt] if _stt else []) + ([_tts[1]] if _tts else []):
         try: p.kill()
         except Exception: pass
 import atexit; atexit.register(close)
