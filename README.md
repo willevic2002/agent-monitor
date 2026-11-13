@@ -41,8 +41,8 @@ sudo pacman -S --needed uv pipewire ffmpeg gst-plugins-good
 packaging/install-voice.sh && systemctl --user restart agent-monitor
 ```
 
-- **Voice out:** Piper reads the lead's replies aloud, and also says when a permission is needed or a run is done. Toggle it with 🔈 in the header.
-- **Voice in:** hold 🎙, or hold **Space** outside the text field, and speak. faster-whisper turns the speech into a prompt when you let go.
+- **Voice out:** Piper reads the lead's replies aloud, and also says when a permission is needed or a run is done. Toggle it with the speaker button in the header.
+- **Voice in:** hold the mic button, or hold **Space** outside the text field, and speak. faster-whisper turns the speech into a prompt when you let go.
 - **Other voices:** put another Piper voice (`name.onnx` + `name.onnx.json`) in `~/.local/share/agent-monitor/voice/` and write `{"piper_model": "name", "fx": false}` to `~/.config/agent-monitor/voice.json`.
 
 ## Security notes

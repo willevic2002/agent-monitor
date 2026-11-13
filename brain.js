@@ -465,7 +465,7 @@ async function next() {
 function hush() { queue.length = 0; if (audio && audio.pause) audio.pause(); audio = null; }
 function setVoice(on) {
   voiceOn = on; store.set("am.voice", on ? "1" : "0");
-  $("#spk").setAttribute("aria-pressed", on); $("#spk").textContent = on ? "🔊" : "🔈";
+  $("#spk").setAttribute("aria-pressed", on);
   if (!on) hush();
 }
 $("#spk").onclick = () => setVoice(!voiceOn);
