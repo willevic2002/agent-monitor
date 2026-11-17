@@ -3,7 +3,6 @@
 A small native Linux app for watching and steering [Claude Code](https://docs.claude.com/en/docs/claude-code) sessions live.
 
 - **Brain view:** a 3D "brain" where the lead agent and every running subagent show up as glowing neuron clusters. Next to it are a tool-call log, a chat panel, a per-agent token and cost breakdown, and permission cards with Allow and Deny buttons. Click an agent to see its own chat and tools.
-- **Graph view:** the same session laid out as waves of subagents.
 - **Permission modes:** *Ask me*, *Accept edits*, *Auto (runs on its own)* and *Plan mode*. You can switch modes in the middle of a run.
 
 It runs your own `claude` CLI with your own settings, plugins and hooks. Nothing goes anywhere except `127.0.0.1`. The UI is a GTK and WebKitGTK window, so no browser tab is involved.
@@ -59,4 +58,4 @@ cd tests/e2e && npm ci && node run.mjs     # needs /usr/bin/chromium; uses a fak
 
 ## Licence
 
-Vendored libraries: three.js (MIT) and cytoscape.js (MIT). Their licences are in `vendor/`.
+Vendored libraries: three.js (MIT). Its licence is in `vendor/`.

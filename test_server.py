@@ -27,6 +27,18 @@ with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False) as f:
 assert all("n" in d for d in server.tail_lines(f.name, 200))
 os.unlink(f.name)
 
+# calendar: one day's Calm Week blocks, sorted, skipped ones dropped; missing or broken data gives []
+cw = tempfile.mkdtemp(); os.mkdir(os.path.join(cw, "data"))
+assert server.calendar("2026-11-13", cw) == []
+blk = lambda start, minutes, **k: {"title": "T", "category": "study", "start": start, "minutes": minutes, "skipped": False, **k}
+json.dump({"weeks": {"2026-W46": {"blocks": [blk("2026-11-13T21:00", 180), blk("2026-11-13T08:15", 45, title="Lab"), blk(None, 60),
+                                             blk("2026-11-13T09:00", 60, skipped=True), blk("2026-11-12T10:00", 60)]}}}, open(os.path.join(cw, "data", "state.json"), "w"))
+json.dump({"categories": {"study": {"name": "Study", "color": "#6c8ebf"}}}, open(os.path.join(cw, "data", "template.json"), "w"))
+assert server.calendar("2026-11-13", cw) == [{"start": "08:15", "end": "09:00", "title": "Lab", "color": "#6c8ebf"},
+                                             {"start": "21:00", "end": "24:00", "title": "T", "color": "#6c8ebf"}]
+open(os.path.join(cw, "data", "state.json"), "w").write("{broken")
+assert server.calendar("2026-11-13", cw) == []
+
 # full state() against the real ~/.claude runs without raising
 assert isinstance(server.state()["sessions"], list)
 

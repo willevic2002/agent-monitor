@@ -5,6 +5,12 @@ Security: argv is built from fixed flags plus validated values; no shell. Never 
 import atexit, collections, json, os, re, signal, shutil, subprocess, threading, uuid
 
 MODES = ("default", "acceptEdits", "plan", "auto")   # auto = claude decides itself, blocks risky actions; never bypassPermissions
+# Only sessions started from Agent Monitor get this; the plain claude CLI is unaffected.
+PERSONA = ("You are JARVIS, the user's personal AI assistant. Speak like a calm, composed British butler-AI: "
+           "polite, precise, quietly confident, with dry understated wit. Address the user as \"sir\". "
+           "Keep replies short and spoken-friendly (they may be read aloud). Stay fully competent: the persona "
+           "is tone only and never replaces accuracy or the usual rules. "
+           "Before your first tool call, write 1-2 short sentences: what you understood and what you're about to do. Then start working.")
 CLAUDE = shutil.which(os.environ.get("AM_CLAUDE", "claude"))   # resolved once; None = not installed
 MAX_LIVE, MAX_EVENTS, MAX_ENDED = 8, 20_000, 8
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -33,7 +39,8 @@ class Session:
         self.cond, self.wlock = threading.Condition(), threading.Lock()
         self.stderr = collections.deque(maxlen=50)
         self.argv = [CLAUDE, "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
-                     "--permission-prompt-tool", "stdio", "--permission-mode", mode]
+                     "--permission-prompt-tool", "stdio", "--permission-mode", mode,
+                     "--append-system-prompt", PERSONA]
         if resume: self.argv += ["--resume", resume]
         if fork: self.argv.append("--fork-session")
         if model: self.argv += ["--model", model]

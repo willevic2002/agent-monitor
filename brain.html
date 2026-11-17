@@ -3,220 +3,184 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agent Brain</title>
+<title>Agent Monitor</title>
 <style>
-:root{
-  --bg:#03050a; --panel:rgba(8,13,20,.74); --edge:rgba(120,220,255,.16); --text:#cfe3ea; --dim:#6f8794; --faint:#1a2630;
-  --cyan:#5ee7ff; --teal:#3df0c0; --green:#8dff9e; --pink:#ff6ad5; --amber:#ffb35c; --violet:#8a7dff; --red:#ff4d6d;
-  --mono:"JetBrainsMono Nerd Font","JetBrains Mono",ui-monospace,monospace;
-}
-*{box-sizing:border-box}
-html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font:12px/1.4 var(--mono)}
-select{color-scheme:dark;background:var(--bg)!important;color:var(--text);border:1px solid var(--edge);border-radius:6px;font:inherit;padding:2px 6px}
-select option{background:#0b121a;color:var(--text)}
-body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(ellipse at 50% 45%,rgba(40,90,120,.18),transparent 60%),radial-gradient(rgba(120,200,255,.07) 1px,transparent 1px) 0 0/24px 24px}
-canvas#gl{position:fixed;inset:0;z-index:1}
-svg.ov{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;overflow:visible}
-#hud{position:fixed;inset:0;z-index:3;pointer-events:none}
-#hud *{pointer-events:auto}
-.fade{transition:opacity .6s ease,transform .6s ease}
-[data-mode]:not([data-mode=panels]) .m-panels,
-[data-mode]:not([data-mode=timeline]) .m-timeline,
-[data-mode]:not([data-mode=converged]) .m-converged{opacity:0;pointer-events:none!important}
-[data-mode]:not([data-mode=panels]) .m-panels *, [data-mode]:not([data-mode=converged]) .m-converged *{pointer-events:none!important}
-[data-mode]:not([data-mode=panels]) .side.left{transform:translateX(-40px)}
-[data-mode]:not([data-mode=panels]) .side.right{transform:translateX(40px)}
-
-header{position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;gap:14px;padding:0 18px;
-  font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
-header b{color:var(--text);font-weight:700}
-.dotlive{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px var(--teal);animation:blink 1.6s infinite}
+:root{--bg:#0d0e10;--panel:#111214;--edge:#2c2e33;--text:#f2f2f0;--dim:#8b8d92;--faint:#26282c;--amber:#e8a317;--red:#e5484d;--c:#e8a317;
+  --mono:"JetBrainsMono Nerd Font","JetBrains Mono",ui-monospace,monospace}
+*{box-sizing:border-box;border-radius:0}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font:11px/1.35 var(--mono)}
+button{font:inherit}
+select{color-scheme:dark;background:var(--bg)!important;color:var(--text);border:1px solid var(--edge);font:inherit;padding:2px 6px}
+select option{background:#16171a;color:var(--text)}
+:focus-visible{outline:1px solid var(--amber);outline-offset:1px}
+#hud{position:fixed;inset:0;z-index:3;display:flex;flex-direction:column}
+header{flex:none;height:36px;display:flex;align-items:center;gap:12px;padding:0 14px;border-bottom:1px solid var(--edge);background:rgba(13,14,16,.9);
+  font-size:12px;letter-spacing:.06em;font-variant:small-caps;color:var(--dim);white-space:nowrap}
+header b{color:var(--text);font-weight:600}
+.dotlive{flex:none;width:7px;height:7px;background:var(--amber);animation:blink 1.6s infinite}
 @keyframes blink{50%{opacity:.25}}
-#hmid{position:absolute;left:50%;transform:translateX(-50%);color:var(--text)}
 .sp{flex:1}
-.tabs{display:inline-flex;border:1px solid var(--edge);border-radius:8px;overflow:hidden}
-.tabs button{background:transparent;border:0;color:var(--dim);font:inherit;letter-spacing:.14em;padding:7px 11px;cursor:pointer;text-transform:uppercase}
-.tabs button+button{border-left:1px solid var(--edge)}
-.tabs button[aria-pressed=true]{color:var(--bg);background:var(--cyan)}
-label.auto{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
-#clock{color:var(--text);min-width:64px;text-align:right}
-
-.side{position:absolute;top:58px;bottom:128px;width:clamp(260px,22vw,380px);display:flex;flex-direction:column;gap:12px}
-.side.left{left:16px} .side.right{right:16px}
-.panel{flex:1;min-height:0;background:var(--panel);border:1px solid var(--edge);border-radius:10px;padding:10px 12px;overflow:hidden;
-  backdrop-filter:blur(6px);display:flex;flex-direction:column;gap:8px;position:relative;transition:border-color .3s,box-shadow .3s}
-.panel.hot{border-color:var(--c);box-shadow:0 0 24px -6px var(--c)}
-.ph{display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
-.ph .tag{color:var(--bg);background:var(--c);padding:1px 6px;border-radius:4px;font-weight:700;letter-spacing:.08em}
-.ph .t{color:var(--text);font-weight:700}
-.ph .live{margin-left:auto;color:var(--c);font-size:9px}
-.ph .live:before{content:"● "}
-.big{font-size:22px;font-weight:700;color:var(--text);letter-spacing:.02em}
-.small{font-size:10px;color:var(--dim)}
-.bar{height:3px;background:var(--faint);border-radius:2px;overflow:hidden}
-.bar i{display:block;height:100%;background:var(--c);box-shadow:0 0 8px var(--c);transition:width .5s}
-ul.plan{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;overflow:hidden}
-ul.plan li,.log div,.checks div{flex:none}
-ul.plan,.checks{min-height:0;overflow:hidden;-webkit-mask-image:linear-gradient(#000 calc(100% - 22px),transparent);mask-image:linear-gradient(#000 calc(100% - 22px),transparent)}
-.log{-webkit-mask-image:linear-gradient(transparent,#000 22px);mask-image:linear-gradient(transparent,#000 22px)} /* flex children would shrink below line height and clip glyphs */
-ul.plan li{color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-ul.plan li.ok{color:var(--text)} ul.plan li.ok:before{content:"✓ ";color:var(--c)}
-ul.plan li.run{color:var(--c)} ul.plan li.run:before{content:"▶ "}
-ul.plan li.todo:before{content:"· "}
-.log{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:2px}
-.log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:in .35s ease}
-.log .ts{color:var(--dim)} .log .tool{color:var(--c);font-weight:700}
+#sess{max-width:32vw;text-overflow:ellipsis;min-width:0}
+#clock{color:var(--text);min-width:40px;text-align:right}
+.hb{background:transparent;border:1px solid var(--edge);padding:4px 8px;cursor:pointer;color:var(--dim)}
+.hb[aria-pressed=true]{color:var(--amber);border-color:var(--amber)}
+.hb svg,form button svg{display:block}
+.panel{background:var(--panel);border:1px solid var(--edge);padding:6px 8px;display:flex;flex-direction:column;gap:5px;min-height:0;min-width:0;overflow:hidden}
+.ph{flex:none;display:flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.06em;font-variant:small-caps;color:var(--dim);border-bottom:1px solid var(--edge);padding-bottom:4px}
+.ph .tag{color:var(--amber);font-weight:400}
+.ph .tag:after{content:" /"}
+.ph .t{color:var(--text)}
+.ph .live{margin-left:auto;color:var(--amber)}
+.log{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;font-size:11px;
+  -webkit-mask-image:linear-gradient(transparent,#000 22px);mask-image:linear-gradient(transparent,#000 22px)}
+.log div{flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:in .35s ease}
+.log .ts{color:var(--dim)} .log .tool{color:var(--text);font-weight:700} .log .who{font-weight:700;margin-right:6px}
 @keyframes in{from{opacity:0;transform:translateY(4px)}}
-.ecg{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:1;min-height:0}
-.ecg .cell{border:1px solid var(--faint);border-radius:6px;padding:4px 6px;display:flex;flex-direction:column;min-height:0}
-.ecg .cell span{font-size:9px;color:var(--dim);display:flex;justify-content:space-between}
-.ecg canvas{flex:1;width:100%;min-height:18px}
-.counts{display:flex;gap:14px}
-.counts div{display:flex;flex-direction:column}
-.counts b{font-size:20px}
-.sev-h{color:var(--red)} .sev-m{color:var(--amber)} .sev-l{color:var(--dim)}
-.checks{display:flex;flex-direction:column;gap:4px}
-.checks div{display:flex;justify-content:space-between;gap:8px}
-.checks .st{color:var(--dim)} .checks .st.ok{color:var(--green)} .checks .st.run{color:var(--c)}
-.tok{display:flex;flex-direction:column;gap:5px}
-.tok .row{display:grid;grid-template-columns:70px 1fr 54px;gap:8px;align-items:center;font-size:10px}
-.tok .row .bar{height:4px}
-
-.waves{position:absolute;top:58px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
-.wave{width:120px;border:1px solid var(--edge);background:var(--panel);border-radius:8px;padding:6px 8px;font-size:10px}
-.wave b{display:block;color:var(--text);letter-spacing:.1em}
-.wave.done{border-color:rgba(141,255,158,.35)} .wave.done b{color:var(--green)}
-.wave.run{border-color:var(--pink);box-shadow:0 0 18px -6px var(--pink)} .wave.run b{color:var(--pink)}
-.wave.todo{background:repeating-linear-gradient(135deg,rgba(255,255,255,.04) 0 6px,transparent 6px 12px)}
-
-.labels{position:absolute;inset:0;pointer-events:none!important}
-.pill{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font-size:9px;letter-spacing:.14em;font-weight:700;text-transform:uppercase;
-  padding:3px 8px;border-radius:999px;border:1px solid var(--c);color:var(--text);background:rgba(3,5,10,.82);box-shadow:0 0 14px -2px var(--c);cursor:pointer;
-  transition:opacity .5s}
+.small{font-size:10px;color:var(--dim)}
+.bar{height:2px;background:var(--faint)} .bar i{display:block;height:100%;background:var(--amber);transition:width .5s}
+.tok .row{display:grid;grid-template-columns:44px 1fr 44px;gap:8px;align-items:center;font-size:10px;margin-bottom:4px}
+.agents .s{color:var(--dim);font-size:10px}
+.agents .s.running{color:var(--amber)} .agents .s.waiting{color:var(--amber);font-weight:700} .agents .s.error{color:var(--red)}
+.agents .c{color:var(--c);font-weight:700}
+#stats{flex:none;display:flex;border-bottom:1px solid var(--edge);background:rgba(13,14,16,.94)}
+#stats>div{padding:3px 16px;border-left:1px solid var(--edge);display:flex;align-items:baseline;gap:8px}
+#stats>div:first-child{border-left:0}
+#stats b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+#stats span{font-size:12px;letter-spacing:.06em;font-variant:small-caps;color:var(--dim)}
+#empty{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--dim);letter-spacing:.12em;font-variant:small-caps;font-size:11px;pointer-events:none!important;text-align:center;width:90%}
+#chat{flex:1}
+#msgs{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:5px}
+#msgs div{flex:none;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;border-left:1px solid var(--edge);padding:2px 8px;animation:in .3s}
+#msgs .who{color:var(--amber);font-weight:600;font-variant:small-caps;letter-spacing:.06em;margin-right:8px}
+#cards{display:flex;flex-direction:column;gap:6px;max-height:45%;overflow:auto;flex:none}
+#cards:empty{display:none}
+.card{background:var(--panel);border:1px solid var(--amber);padding:8px 10px;display:flex;flex-direction:column;gap:6px;transition:opacity .4s,transform .4s}
+.card.gone{opacity:0;transform:translateY(12px)}
+.card code{color:var(--text);font:inherit;word-break:break-all;max-height:4.6em;overflow:auto;white-space:pre-wrap}
+.card .why{color:var(--dim);font-size:10px}
+.card .btns{display:flex;gap:8px}
+.card button{font-size:11px;padding:4px 12px;cursor:pointer;border:1px solid var(--edge);background:transparent;color:var(--text)}
+.card button.ok{background:var(--amber);border-color:var(--amber);color:#0d0e10;font-weight:700}
+.card button.no{color:var(--red);border-color:var(--red)}
+form{flex:none;display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:#111214;border:1px solid var(--edge);padding:4px 4px 4px 8px}
+form .who{font-size:12px;letter-spacing:.06em;color:var(--amber);font-variant:small-caps}
+form input{flex:1 1 60%;min-width:0;background:transparent;border:0;color:var(--text);font:inherit;outline:none;padding:5px 0}
+form .cwd{flex:1 1 30%;min-width:0;width:auto;color:var(--dim);border:0;outline:0}
+form input.cwd{flex:1 1 30%}
+form select.cwd{flex:0 1 150px}
+form button{flex:none;width:26px;height:26px;border:0;background:var(--amber);color:#0d0e10;font-weight:700;cursor:pointer}
+form button.stop{background:var(--red);color:#fff}
+form button.mic{background:transparent;color:var(--dim);border:1px solid var(--edge)}
+form button.mic.on{background:var(--red);color:#fff}
+#err{color:var(--red);margin:0;font-size:11px;flex:none}
+#err:empty{display:none}
+#start{position:fixed;top:38vh;left:0;right:0;z-index:3;display:none;flex-direction:column;align-items:center;gap:10px;pointer-events:none}
+body.start #start{display:flex}
+#start b{font:300 clamp(48px,8vw,96px)/1 system-ui,sans-serif;color:#fff;letter-spacing:-.02em}
+#start span{font-size:12px;letter-spacing:.16em;font-variant:small-caps;color:var(--dim)}
+body.start header{opacity:.4;transition:opacity .3s}
+body.start header:hover,body.start header:focus-within{opacity:1}
+body.start #q:focus-visible{outline:0}
+body.start form:focus-within{border-color:var(--amber)}
+#cal{position:fixed;top:44px;left:50%;transform:translateX(-50%);z-index:4;max-width:calc(100vw - 32px);display:none;gap:18px;align-items:baseline;overflow:hidden}
+#cal:not([hidden]){display:flex}
+#p-use[hidden]{display:none}
+#cal h2{margin:0;flex:none;font-size:12px;font-weight:400;letter-spacing:.12em;font-variant:small-caps;color:var(--dim)}
+#cal div{flex:none;display:flex;gap:8px;align-items:baseline;border-left:1px solid var(--amber);padding:2px 0 2px 8px;white-space:nowrap}
+#cal div span{color:var(--dim)} #cal div b{font-weight:400;max-width:18ch;overflow:hidden;text-overflow:ellipsis}
+#cal .past{display:none} #cal .now b{color:#fff;font-weight:700}
+@media (max-width:900px){#cal{display:none!important}#mname,#hmid,#clock{display:none}header{gap:8px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+canvas#gl{position:fixed;inset:0;z-index:1}
+#hud{pointer-events:none} #hud>*{pointer-events:auto}
+.labels{position:fixed;inset:0;pointer-events:none;z-index:4}
+.pill{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font-size:11px;letter-spacing:.04em;font-weight:600;padding:2px 8px;
+  border:1px solid var(--c);color:var(--text);background:rgba(13,14,16,.92);cursor:pointer;pointer-events:auto;transition:opacity .5s}
 .pill i{font-style:normal;color:var(--c);margin-right:6px}
 .pill.dim{opacity:.35}
-
-#stats{position:absolute;bottom:74px;left:50%;transform:translateX(-50%);display:flex;gap:42px;text-align:center}
-#stats b{display:block;font-size:24px;color:var(--text);text-shadow:0 0 12px rgba(94,231,255,.5)}
-#stats span{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
-
-#tclock{position:absolute;top:56px;left:50%;transform:translateX(-50%);text-align:center}
-#tclock .k{font-size:10px;letter-spacing:.24em;color:var(--dim)}
-#tclock b{display:block;font-size:44px;letter-spacing:.04em;color:#fff;text-shadow:0 0 22px rgba(94,231,255,.6)}
-
-#ctitle{position:absolute;left:50%;transform:translateX(-50%);bottom:262px;font-size:10px;letter-spacing:.2em;color:var(--amber);text-transform:uppercase}
-.card{width:260px;background:var(--panel);border:1px solid var(--c);border-radius:10px;padding:10px 12px;box-shadow:0 0 22px -8px var(--c);
-  display:flex;flex-direction:column;gap:6px;transition:opacity .4s,transform .4s}
-.card.gone{opacity:0;transform:translateY(12px) scale(.96)}
-.card code{color:var(--c);font:inherit;word-break:break-all}
-.card .why{color:var(--dim);font-size:11px}
-.card .btns{display:flex;gap:8px;margin-top:auto}
-.card button,.btn{font:inherit;font-size:11px;border-radius:6px;padding:5px 12px;cursor:pointer;border:1px solid var(--edge);background:transparent;color:var(--text)}
-.card button.ok{background:var(--teal);color:var(--bg);border-color:var(--teal);font-weight:700}
-.card button.no{color:var(--red);border-color:rgba(255,77,109,.5)}
-
-#msgs div{background:var(--panel);border:1px solid var(--edge);border-radius:8px;padding:6px 10px;animation:in .3s;transition:opacity 1s}
-#msgs .who{color:var(--cyan);font-weight:700;margin-right:8px}
-form{display:flex;gap:8px;align-items:center;background:rgba(8,13,20,.85);border:1px solid var(--edge);border-radius:12px;padding:6px 6px 6px 12px}
-form .who{font-size:9px;letter-spacing:.14em;color:var(--bg);background:var(--cyan);padding:2px 6px;border-radius:4px;font-weight:700}
-form input{flex:1;background:transparent;border:0;color:var(--text);font:inherit;outline:none;padding:6px 0}
-form button{width:30px;height:30px;border-radius:50%;border:0;background:var(--cyan);color:var(--bg);font-weight:700;cursor:pointer;box-shadow:0 0 16px var(--cyan)}
-:focus-visible{outline:2px solid #fff;outline-offset:2px}
-
-#ring text{font:9px var(--mono);letter-spacing:.12em;fill:var(--dim)}
-#ring .ev text{transition:opacity .5s}
-#wires path{fill:none;stroke-width:1.2;stroke-dasharray:3 7;animation:flow 1.2s linear infinite}
-#wires path.base{stroke-dasharray:none;stroke-width:1;opacity:.35;animation:none}
-@keyframes flow{to{stroke-dashoffset:-20}}
-@media (max-width:1099px){.side,.waves,#wires{display:none!important}}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-
-.side{bottom:150px}
-.agents{display:flex;flex-direction:column;gap:5px;overflow:hidden;min-height:0}
-.agents button{all:unset;cursor:pointer;display:grid;grid-template-columns:44px 1fr auto;gap:8px;align-items:center;font-size:11px;padding:2px 4px;border-radius:5px}
-.agents button[aria-pressed=true]{background:rgba(94,231,255,.1)}
-.agents .c{color:var(--c);font-weight:700} .agents .s{color:var(--dim);font-size:10px}
-.agents .s.running{color:var(--c)} .agents .s.waiting{color:var(--amber)} .agents .s.error{color:var(--red)}
-.log .who{font-weight:700;margin-right:6px}
-/* chat lives in the left column under the tool log */
-.side{width:clamp(300px,26vw,440px)!important}
-.side.left,.side.right{bottom:16px}
-#chat{gap:8px}
-#msgs{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:6px}
-#msgs div{flex:none;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
-#cards{display:flex;flex-direction:column;gap:8px;max-height:45%;overflow:auto;flex:none}
-#cards:empty{display:none}
-#cards .card{position:static;width:auto}
-#cards .card code{max-height:4.6em;overflow:auto;white-space:pre-wrap}
-form{flex-wrap:wrap;flex:none}
-form #q{flex:1 1 60%;min-width:0}
-form .cwd{flex:1 1 30%;min-width:0;width:auto!important}
-@media (max-width:1099px){.side.left{display:flex!important;left:16px;right:16px;width:auto!important;top:auto;height:45vh}.side.left>.panel:first-child{display:none}}
-form select.cwd{width:auto;border:0;outline:0;color:var(--text)}
-form .cwd{color:var(--dim);border-right:1px solid var(--edge)!important;margin-right:4px}
-form button.stop{background:var(--red);box-shadow:0 0 16px var(--red)}
-#empty{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--dim);letter-spacing:.14em;text-transform:uppercase;font-size:10px;pointer-events:none!important;text-align:center}
-header a{color:var(--dim);text-decoration:none;border:1px solid var(--edge);border-radius:8px;padding:6px 10px;letter-spacing:.14em}
-header a:hover{color:var(--text)}
-.hb svg,form button svg{display:block}
-.hb{background:transparent;border:1px solid var(--edge);border-radius:8px;padding:5px 9px;cursor:pointer;color:var(--dim);font:inherit}
-.hb[aria-pressed=true]{color:var(--cyan);border-color:var(--cyan);box-shadow:0 0 12px -2px var(--cyan)}
-form button.mic{background:transparent;color:var(--dim);border:1px solid var(--edge);box-shadow:none}
-form button.mic.on{background:var(--red);box-shadow:0 0 18px var(--red);animation:throb 1s infinite}
-@keyframes throb{50%{transform:scale(1.12)}}
-#stats{top:52px;bottom:auto}
-#stats b{font-size:18px}
-#stats span{white-space:nowrap}
-#sess{max-width:32vw;text-overflow:ellipsis}
-@media (max-width:1099px){#hmid{display:none}}
+#main{flex:1;min-height:0;display:grid;grid-template-columns:264px minmax(0,1fr) 40%;pointer-events:none}
+#main>*{pointer-events:auto}
+#rail{display:flex;flex-direction:column;min-height:0;background:rgba(13,14,16,.88);border-right:1px solid var(--edge)}
+#rail .panel{border-width:0 0 1px 0}
+#rail .panel:first-child{flex:1}
+#rail .log div{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;overflow-wrap:anywhere}
+.agents{display:flex;flex-direction:column;overflow:auto;max-height:34vh}
+.agents button{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:38px minmax(0,1fr);grid-template-areas:"c t" "c s";column-gap:6px;padding:3px 4px;font-size:11px;line-height:1.3;border-bottom:1px solid var(--faint)}
+.agents button:focus-visible{outline:1px solid var(--amber);outline-offset:-1px}
+.agents button[aria-pressed=true]{background:rgba(232,163,23,.12)}
+.agents .c{grid-area:c;align-self:center} .agents .s{grid-area:s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .agents .n{grid-area:t;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.big{font-size:20px;font-weight:600}
+#stage{position:relative;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;pointer-events:none!important}
+#stage>*{pointer-events:auto}
+#stage #stats{border:0;border-top:1px solid var(--edge);justify-content:center}
+#dock{min-width:0;min-height:0;display:flex;border-left:1px solid var(--edge);background:rgba(13,14,16,.9)}
+#dock .panel{flex:1;border:0;padding:8px 12px;gap:8px;background:none}
+#msgs{font-size:12px}
+@media (max-width:900px){
+  #main{grid-template-columns:1fr;grid-template-rows:minmax(150px,40%) minmax(0,1fr)}
+  #rail{display:none}
+  #dock{border-left:0;border-top:1px solid var(--edge)}
+  #stage #stats{display:grid;grid-template-columns:repeat(5,1fr)}
+  #stage #stats>div{padding:3px 6px;flex-direction:column;gap:0;align-items:flex-start}
+  #stats b{font-size:14px}
+  form select.cwd{flex:1 1 40%}
+}
+body.start #rail,body.start #stats,body.start #empty,body.start .labels,body.start #dock .ph,body.start #msgs,body.start #cards,body.start form .who{display:none!important}
+body.start #main{display:flex;align-items:flex-end;justify-content:center;padding-bottom:7vh}
+body.start #dock{flex:0 1 620px;max-width:calc(100vw - 32px);border:0;background:none}
+body.start #dock .panel{padding:0}
+body.start .labels{display:none}
+body:not(.start) #cal{top:44px;left:276px;transform:none;max-width:calc(60% - 300px);z-index:5}
 </style>
 </head>
-<body data-mode="panels">
+<body class="start">
 <canvas id="gl" aria-hidden="true"></canvas>
-
+<div class="labels" id="labels"></div>
 <div id="hud">
   <header>
-    <span class="dotlive" id="dot"></span><span><b>Agent Monitor</b> · <span id="mname">Brain</span></span>
+    <span class="dotlive" id="dot"></span><span><b>Agent Monitor</b> · <span id="mname">Neuron</span></span>
     <span id="hmid">no session</span>
     <span class="sp"></span>
     <select id="sess" aria-label="Session" class="btn"></select>
     <button type="button" id="spk" class="hb" aria-pressed="false" title="Voice: read the lead's replies aloud" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg></button>
-    <a href="/">Graph</a>
     <span id="clock"></span>
   </header>
 
-  <div class="side left fade m-panels">
-    <section class="panel" style="--c:var(--cyan)"><div class="ph"><span class="tag">01</span><span class="t">Tool calls</span><span class="live" id="logf">all</span></div>
-      <div class="log" id="log"></div></section>
-    <section class="panel" id="chat" style="--c:var(--cyan);flex:1.5"><div class="ph"><span class="tag">02</span><span class="t">Chat</span><span class="live" id="chatf" title="Back to the lead chat" style="cursor:pointer">lead</span></div>
-      <div id="msgs" aria-live="polite"></div>
-      <div id="cards" aria-live="assertive"></div>
-    <form id="f"><span class="who">LEAD</span><input id="cwd" class="cwd" aria-label="Working directory" title="Working directory for a new session" autocomplete="off"><select id="mode" class="cwd" aria-label="Permission mode" title="Permission mode"><option value="default">Ask me</option><option value="acceptEdits">Accept edits</option><option value="auto">Auto — runs on its own</option><option value="plan">Plan mode</option></select><input id="q" placeholder="Ask the lead anything… (slash commands work too)" autocomplete="off" aria-label="Prompt"><button type="button" id="mic" class="mic" aria-label="Hold to talk (or hold Space)" title="Hold to talk (or hold Space outside the text field)" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg></button><button id="go" aria-label="Send">↑</button><button type="button" id="stop" class="stop" aria-label="Stop" hidden>■</button></form>
-    <p id="err" role="alert" style="color:var(--red);margin:4px 0 0;font-size:11px"></p>
-    </section>
+  <div id="main">
+    <aside id="rail">
+      <section class="panel"><div class="ph"><span class="tag">01</span><span class="t">Tool calls</span><span class="live" id="logf">all</span></div>
+        <div class="log" id="log"></div></section>
+      <section class="panel" style="flex:none"><div class="ph"><span class="tag">02</span><span class="t">Agents</span><span class="live" id="nag">0</span></div>
+        <div class="agents" id="agents"></div></section>
+      <section class="panel" id="p-tok" style="flex:none"><div class="ph"><span class="tag">03</span><span class="t">Tokens · cost</span></div>
+        <div><span class="big" id="cost">$0.00</span> <span class="small" id="toktot">0 tok</span></div>
+        <div class="tok" id="tok"></div></section>
+      <section class="panel" id="p-use" style="flex:none" hidden><div class="ph"><span class="tag">05</span><span class="t">Usage · all sessions</span></div>
+        <div><span class="small">Today</span> <span class="big" id="u-day">$0.00</span> <span class="small">Month</span> <span class="big" id="u-mon">$0.00</span></div>
+        <div class="small" id="u-mod"></div></section>
+    </aside>
+    <div id="stage">
+      <div id="empty">Type a prompt on the right · the lead and subagents grow here</div>
+      <div id="stats">
+        <div><b id="s-agents">0</b><span>agents</span></div>
+        <div><b id="s-tools">0</b><span>tool calls</span></div>
+        <div><b id="s-tok">0</b><span>tokens</span></div>
+        <div><b id="s-time">00:00</b><span>time</span></div>
+      </div>
+    </div>
+    <div id="dock">
+      <section class="panel" id="chat"><div class="ph"><span class="tag">04</span><span class="t">Chat</span><span class="live" id="chatf" title="Back to the lead chat" style="cursor:pointer">lead</span></div>
+        <div id="msgs" aria-live="polite"></div>
+        <div id="cards" aria-live="assertive"></div>
+        <form id="f"><span class="who">LEAD</span><input id="cwd" class="cwd" aria-label="Working directory" title="Working directory for a new session" autocomplete="off"><select id="mode" class="cwd" aria-label="Permission mode" title="Permission mode"><option value="default">Ask me</option><option value="acceptEdits">Accept edits</option><option value="auto">Auto — runs on its own</option><option value="plan">Plan mode</option></select><input id="q" autofocus placeholder="Ask the lead anything… (slash commands work too)" autocomplete="off" aria-label="Prompt"><button type="button" id="mic" class="mic" aria-label="Hold to talk (or hold Space)" title="Hold to talk (or hold Space outside the text field)" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg></button><button id="go" aria-label="Send">↑</button><button type="button" id="stop" class="stop" aria-label="Stop" hidden>■</button></form>
+        <p id="err" role="alert"></p>
+      </section>
+    </div>
   </div>
-
-  <div class="side right fade m-panels">
-    <section class="panel" style="--c:var(--teal)"><div class="ph"><span class="tag">03</span><span class="t">Agents</span><span class="live" id="nag">0</span></div>
-      <div class="agents" id="agents"></div></section>
-    <section class="panel" id="p-tok" style="--c:var(--amber);flex:0 0 auto"><div class="ph"><span class="tag">04</span><span class="t">Tokens · cost</span></div>
-      <div><span class="big" id="cost">$0.00</span> <span class="small" id="toktot">0 tok</span></div>
-      <div class="tok" id="tok"></div></section>
-  </div>
-
-  <div class="labels" id="labels"></div>
-  <div id="empty">Type a prompt on the left · the lead and subagents grow here</div>
-
-  <div id="stats" class="fade m-panels">
-    <div><b id="s-agents">0</b><span>subagents</span></div>
-    <div><b id="s-tools">0</b><span>tool calls</span></div>
-    <div><b id="s-tok">0</b><span>tokens</span></div>
-    <div><b id="s-time">00:00</b><span>session time</span></div>
-  </div>
-
 </div>
-
+<aside id="cal" aria-label="Today's schedule" hidden><h2>Today</h2></aside>
+<div id="start"><b id="st-time"></b><span id="st-date"></span></div>
 <script src="/vendor/three.min.js"></script>
 <script src="/brain.js"></script>
 </body>

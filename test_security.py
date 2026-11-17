@@ -119,15 +119,11 @@ assert s == 200 and hd["x-content-type-options"] == "nosniff" and hd["x-frame-op
     and hd["referrer-policy"] == "no-referrer" and "frame-ancestors 'none'" in hd["content-security-policy"]
 
 # static
-assert chk("GET", "/vendor/cytoscape.min.js")[0] == 200
+assert chk("GET", "/vendor/three.min.js")[0] == 200
 s, hd, _ = chk("GET", "/")
 csp = hd["content-security-policy"]
 assert "unsafe-inline" not in [d for d in csp.split(";") if "script-src" in d][0] and "style-src 'self' 'unsafe-inline'" in csp
-if os.path.exists(os.path.join(HERE, "app.js")):
-    s, hd, _ = chk("GET", "/app.js")
-    assert s == 200 and hd["content-type"].startswith("text/javascript")
-else:
-    print("note: app.js absent, skipping /app.js 200 check")
+assert chk("GET", "/app.js")[0] == 404   # graph view removed; only brain remains
 assert chk("GET", "/vendor/../server.py")[0] == 404
 assert chk("GET", "/vendor/%2e%2e/server.py")[0] == 404
 assert chk("GET", "/server.py")[0] == 404

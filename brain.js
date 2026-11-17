@@ -1,5 +1,5 @@
 "use strict";
-// Agent Brain: the 3D neuron view of a driven `claude -p` session (same API as app.js; graph from graph.reduce via SSE).
+// Agent Brain: the 3D neuron view of a driven `claude -p` session (graph from graph.reduce via SSE).
 const $ = s => document.querySelector(s);
 const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -8,7 +8,7 @@ const trunc = (s, n) => s && s.length > n ? s.slice(0, n) + "…" : (s || "");
 const short = t => (t || "agent").split(":").pop();
 const fmtTok = n => !n ? "0" : n < 1e3 ? String(n) : n < 1e6 ? (n / 1e3).toFixed(1) + "k" : (n / 1e6).toFixed(1) + "M";
 const toolLabel = i => trunc(String((i && (i.command || i.file_path || i.pattern || i.path || i.url || i.description || i.query)) || "").split("\n")[0], 80);
-const PAL = [["#5ee7ff", "#8a7dff"], ["#3df0c0", "#5ee7ff"], ["#ff6ad5", "#9b7bff"], ["#ffb35c", "#ff6ad5"], ["#8dff9e", "#3df0c0"], ["#8a7dff", "#5ee7ff"], ["#ff4d6d", "#ffb35c"]];
+const PAL = [["#e8a317", "#f2f2f0"], ["#f2f2f0", "#a8a29a"], ["#f5c451", "#cfcfcc"], ["#a8a29a", "#e8a317"], ["#c98a0c", "#f2f2f0"], ["#cfcfcc", "#7d7f84"], ["#7d7f84", "#f5c451"]];   // amber / white / grey family
 const MAX_BLOBS = 7; // lead + 6 subagents; older finished agents only stay in the list
 const SV = { running: "running", waiting: "waiting for you", done: "done", error: "error", idle: "ready" };
 
@@ -39,13 +39,22 @@ float snoise(vec3 v){
   return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
 }`;
 const SHAPE = `
-uniform float uTime, uAct, uScale, uPetal, uSeed, uBright, uMerge;
+uniform float uTime, uMT, uAct, uScale, uPetal, uSeed, uBright, uMerge;
 uniform vec3 uCenter, uOut, uColA, uColB, uMergeCol;
 vec3 shape(vec3 d, float depth){
-  float n  = snoise(d*1.35 + vec3(uSeed, uSeed*0.7, uTime*0.16));
-  float n2 = snoise(d*3.2 + vec3(-uSeed, uTime*0.27, 0.0));
-  float r = (1.0 + 0.24*n + 0.035*n2 + uAct*0.05*sin(uTime*8.0 + d.x*7.0 + d.y*5.0)) * depth;
-  vec3 p = d*r + uOut*max(dot(d,uOut),0.0)*0.38*uPetal;
+  float t = uMT;   // morph clock: runs faster while the agent is busy
+  // three lobe directions wander on their own orbits; each swells and recedes on its own beat
+  vec3 a1 = normalize(vec3(sin(t*0.31+uSeed), cos(t*0.23+uSeed*1.7), sin(t*0.19+2.0)));
+  vec3 a2 = normalize(vec3(cos(t*0.17+4.0), sin(t*0.29+uSeed*0.6), cos(t*0.21+1.0)));
+  vec3 a3 = normalize(vec3(sin(t*0.13+1.0+uSeed), sin(t*0.37), cos(t*0.27+3.0)));
+  float l1 = pow(max(dot(d,a1),0.0),2.0)*sin(t*0.53+uSeed);
+  float l2 = pow(max(dot(d,a2),0.0),2.0)*sin(t*0.41+2.0+uSeed);
+  float l3 = pow(max(dot(d,a3),0.0),2.0)*sin(t*0.67+4.0);
+  float n  = snoise(d*1.35 + vec3(uSeed + t*0.17, uSeed*0.7 - t*0.11, t*0.14));
+  float n2 = snoise(d*3.4 + vec3(-uSeed, t*0.3, -t*0.2));
+  float r = (1.0 + 0.16*n + 0.03*n2 + 0.42*l1 + 0.34*l2 + 0.28*l3 + uAct*0.04*sin(uTime*8.0 + d.x*7.0 + d.y*5.0)) * depth;
+  vec3 p = d*r * vec3(1.0+0.18*sin(t*0.21), 1.0+0.18*sin(t*0.17+2.0), 1.0+0.18*sin(t*0.14+4.0));   // axes stretch out of phase
+  p += uOut*max(dot(d,uOut),0.0)*0.38*uPetal;
   return uCenter + p*uScale;
 }`;
 const LINE_VS = NOISE + SHAPE + `
@@ -55,7 +64,7 @@ void main(){
   vec4 mv = modelViewMatrix*vec4(shape(d, aDepth),1.0);
   vec3 nv = normalize(normalMatrix*d);
   float rim = 1.0-abs(nv.z);
-  float a = (0.10 + 0.75*rim*rim) * uBright * (0.75 + 0.6*uAct);
+  float a = (0.07 + 0.55*rim*rim) * uBright * (0.7 + 0.5*uAct);
   vec3 c = mix(mix(uColA, uColB, aMix), uMergeCol, uMerge*0.55);
   vCol = c*a;
   gl_Position = projectionMatrix*mv;
@@ -66,8 +75,8 @@ vec3 rot(vec3 v, vec3 k, float a){ return v*cos(a)+cross(k,v)*sin(a)+k*dot(k,v)*
 void main(){
   vec3 d = normalize(rot(normalize(position), aAxis, uTime*aSpeed));
   vec4 mv = modelViewMatrix*vec4(shape(d, 0.9 + 0.1*fract(aSpeed*13.0)),1.0);
-  gl_PointSize = 0.014*(1.0 + 2.2*uAct)*uScale*uPx/(-mv.z);
-  vCol = mix(vec3(1.0), mix(uColA, uMergeCol, uMerge*0.5), 0.45) * (0.3 + 0.7*uAct) * uBright;
+  gl_PointSize = 0.010*(1.0 + 2.2*uAct)*uScale*uPx/(-mv.z);
+  vCol = mix(vec3(1.0), mix(uColA, uMergeCol, uMerge*0.5), 0.45) * (0.25 + 0.6*uAct) * uBright;
   gl_Position = projectionMatrix*mv;
 }`;
 const LINE_FS = `varying vec3 vCol; void main(){ gl_FragColor = vec4(vCol,1.0); }`;
@@ -81,33 +90,25 @@ const FOV = 35, TANH = Math.tan(FOV * Math.PI / 360), WORLD_R = 1.6;
 const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
 const brain = new THREE.Group();
 scene.add(brain);
-function glowTex() {
-  const c = document.createElement("canvas"); c.width = c.height = 128;
-  const g = c.getContext("2d"), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-  gr.addColorStop(0, "rgba(255,255,255,.9)"); gr.addColorStop(0.35, "rgba(255,255,255,.25)"); gr.addColorStop(1, "rgba(255,255,255,0)");
-  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
-  return new THREE.CanvasTexture(c);
-}
-const GLOW = glowTex();
 const rnd = (a, b) => a + Math.random() * (b - a);
 const randUnit = () => new THREE.Vector3(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).normalize();
-const MERGE_COL = new THREE.Color("#bff4ff");
+const MERGE_COL = new THREE.Color("#fff0d0");
 
 /** One agent = one neuron blob: wandering fibres + orbiting sparks + glow sprite. */
 function makeBlob(id, k) {
   const [c1, c2] = PAL[k % PAL.length];
   const uni = {
-    uTime: { value: 0 }, uAct: { value: 0 }, uScale: { value: 0.05 }, uPetal: { value: 1 }, uSeed: { value: k * 3.7 },
+    uTime: { value: 0 }, uMT: { value: k * 7 }, uAct: { value: 0 }, uScale: { value: 0.05 }, uPetal: { value: 1 }, uSeed: { value: k * 3.7 },
     uBright: { value: 1 }, uMerge: { value: 0 }, uCenter: { value: new THREE.Vector3() }, uOut: { value: new THREE.Vector3(0, 1, 0) },
     uColA: { value: new THREE.Color(c1) }, uColB: { value: new THREE.Color(c2) }, uMergeCol: { value: MERGE_COL }, uPx: { value: pxScale() },
   };
   const pos = [], depth = [], mix = [], tint = randUnit();
-  for (let c = 0; c < 130; c++) {
+  for (let c = 0; c < (k === 0 ? 380 : 300); c++) {
     const a = randUnit(), u = new THREE.Vector3().crossVectors(a, randUnit()).normalize(), v = new THREE.Vector3().crossVectors(a, u);
     const t0 = rnd(0, 6.3), len = rnd(1.4, 5), wob = rnd(0.15, 0.5), fq = rnd(1, 4), ph = rnd(0, 6.3), dp = rnd(0.72, 1.0);
     let prev = null;
-    for (let s = 0; s <= 40; s++) {
-      const t = t0 + len * s / 40;
+    for (let s = 0; s <= 32; s++) {
+      const t = t0 + len * s / 32;
       const d = u.clone().multiplyScalar(Math.cos(t)).addScaledVector(v, Math.sin(t)).addScaledVector(a, wob * Math.sin(t * fq + ph)).normalize();
       if (prev) for (const p of [prev, d]) { pos.push(p.x, p.y, p.z); depth.push(dp); mix.push(0.5 + 0.5 * p.dot(tint)); }
       prev = d;
@@ -120,25 +121,24 @@ function makeBlob(id, k) {
   const lmat = new THREE.ShaderMaterial({ uniforms: uni, vertexShader: LINE_VS, fragmentShader: LINE_FS, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
   const lines = new THREE.LineSegments(lg, lmat); lines.frustumCulled = false;
   const pp = [], ax = [], sp = [];
-  for (let i = 0; i < 70; i++) { const d = randUnit(), x = randUnit(); pp.push(d.x, d.y, d.z); ax.push(x.x, x.y, x.z); sp.push(rnd(0.15, 0.7) * (Math.random() < .5 ? -1 : 1)); }
+  for (let i = 0; i < 90; i++) { const d = randUnit(), x = randUnit(); pp.push(d.x, d.y, d.z); ax.push(x.x, x.y, x.z); sp.push(rnd(0.15, 0.7) * (Math.random() < .5 ? -1 : 1)); }
   const pg = new THREE.BufferGeometry();
   pg.setAttribute("position", new THREE.Float32BufferAttribute(pp, 3));
   pg.setAttribute("aAxis", new THREE.Float32BufferAttribute(ax, 3));
   pg.setAttribute("aSpeed", new THREE.Float32BufferAttribute(sp, 1));
   const pmat = new THREE.ShaderMaterial({ uniforms: uni, vertexShader: PT_VS, fragmentShader: PT_FS, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
   const pts = new THREE.Points(pg, pmat); pts.frustumCulled = false;
-  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color: c1, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.2 }));
-  brain.add(lines, pts, glow);
+  brain.add(lines, pts);
   const pill = document.createElement("button");
   pill.className = "pill"; pill.style.setProperty("--c", c1);
   pill.onclick = () => setFocus(focus === id ? null : id);
   $("#labels").append(pill);
-  return { id, uni, glow, pill, act: 0, out: new THREE.Vector3(0, 1, 0), center: new THREE.Vector3(), scale: 0.6, petal: 1, bright: 1,
-    dispose() { brain.remove(lines, pts, glow); lg.dispose(); pg.dispose(); lmat.dispose(); pmat.dispose(); glow.material.dispose(); pill.remove(); } };
+  return { id, uni, pill, mt: k * 7, act: 0, out: new THREE.Vector3(0, 1, 0), center: new THREE.Vector3(), scale: 0.6, petal: 1, bright: 1,
+    dispose() { brain.remove(lines, pts); lg.dispose(); pg.dispose(); lmat.dispose(); pmat.dispose(); pill.remove(); } };
 }
 
 // ---------- state ----------
-let W = 0, H = 0, brainR = 200, brainCy = 0, focus = null;
+let W = 0, H = 0, brainR = 200, brainCy = 0, brainCx = 0, focus = null;
 let sid = null, src = null, graph = null, t0 = null, inflight = false;
 const blobs = new Map();      // node id -> blob
 const info = new Map();       // node id -> { code, k, name }
@@ -205,28 +205,33 @@ function resize() {
 }
 addEventListener("resize", resize);
 function layoutTarget() {
-  const sw = W >= 1100 ? Math.min(440, Math.max(300, W * 0.26)) + 32 : 0;
-  const top = 110, bot = W >= 1100 ? H - 40 : Math.max(top + 120, $("#chat").getBoundingClientRect().top - 36);   // narrow: chat sits below the brain
-  return { R: Math.min((W - 2 * sw) * 0.36, (bot - top) * 0.36), cy: (top + bot) / 2 };
+  if (document.body.classList.contains("start")) return { R: H * 0.15, cy: H * 0.28, cx: W / 2 };   // start screen: brain in the upper half, clock under it
+  const r = $("#stage").getBoundingClientRect(), top = r.top + 10, bot = $("#stats").getBoundingClientRect().top - 10;
+  const f = blobs.size === 1 ? 0.5 : 0.36;   // a lone brain fills the stage; a ring of subagents needs room around it
+  return { R: Math.min(r.width * f, (bot - top) * f), cy: (top + bot) / 2, cx: r.left + r.width / 2 };
 }
 const tmp = new THREE.Vector3();
-let last = performance.now(), T = 0;
+let last = performance.now(), T = 0, spin = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000) * SPEED; last = now; T += dt;
   const k = 1 - Math.exp(-dt * 2.4);
   const L = layoutTarget();
-  brainR += (L.R - brainR) * k; brainCy += (L.cy - brainCy) * k;
+  brainR += (L.R - brainR) * k; brainCy += (L.cy - brainCy) * k; brainCx += (L.cx - brainCx) * k;
   const camZ = WORLD_R * H / (2 * TANH * Math.max(60, brainR));
   camera.position.z = camZ;
-  brain.position.y = (H / 2 - brainCy) / (H / (2 * TANH * camZ));
-  brain.rotation.y = Math.sin(T * 0.15) * 0.35;
-  brain.rotation.x = Math.sin(T * 0.11) * 0.12;
+  const ppu = H / (2 * TANH * camZ);
+  brain.position.y = (H / 2 - brainCy) / ppu; brain.position.x = (brainCx - W / 2) / ppu;
+  // lone lead turns continuously; with subagents around it eases back to the front-facing wobble so their layout stays readable
+  if (blobs.size === 1) spin += dt * 0.5; else spin -= (spin - Math.round(spin / 6.2832) * 6.2832) * k;
+  brain.rotation.y = spin + Math.sin(T * 0.15) * 0.35;
+  brain.rotation.x = Math.sin(T * 0.19) * (blobs.size === 1 ? 0.45 : 0.12);
   brain.updateMatrixWorld(); camera.updateMatrixWorld();
   for (const b of blobs.values()) {
     const u = b.uni;
     if (b.status === "running" && b.act < 0.25) b.act += dt * 0.6;        // live agents keep a slow heartbeat
     if (b.status === "waiting") b.act = 0.6 + 0.5 * Math.sin(T * 4);       // asking for permission: throb
     b.act = Math.max(0, b.act - dt * 1.4);
+    b.mt += dt * (0.9 + 2.2 * Math.min(1, b.act)); u.uMT.value = b.mt;   // busy agents morph faster
     u.uTime.value = T; u.uAct.value += (Math.min(1, b.act) - u.uAct.value) * Math.min(1, dt * 8);
     u.uCenter.value.lerp(b.center, k);
     u.uScale.value += (b.scale - u.uScale.value) * k;
@@ -234,9 +239,6 @@ function frame(now) {
     let br = b.status === "done" ? 0.4 : b.status === "error" ? 0.3 : 1;
     if (focus && focus !== b.id) br *= 0.3;
     u.uBright.value += (br - u.uBright.value) * k;
-    b.glow.position.copy(u.uCenter.value);
-    b.glow.scale.setScalar(u.uScale.value * 3.4);
-    b.glow.material.opacity = (0.12 + 0.22 * u.uAct.value) * u.uBright.value;
     tmp.copy(u.uCenter.value).addScaledVector(b.out, u.uScale.value * (blobs.size === 1 ? 1.25 : 1.3)).applyMatrix4(brain.matrixWorld).project(camera);
     b.pill.style.left = (tmp.x + 1) / 2 * W + "px"; b.pill.style.top = (1 - tmp.y) / 2 * H + "px";
     b.pill.classList.toggle("dim", !!focus && focus !== b.id);
@@ -265,7 +267,7 @@ function renderAgents(g) {
     b.title = n.description || n.current || "";
     const c = document.createElement("span"); c.className = "c"; c.textContent = m.code;
     const t = document.createElement("span"); t.textContent = m.name + (n.description ? " · " + trunc(n.description, 40) : "");
-    t.style.cssText = "white-space:nowrap;overflow:hidden;text-overflow:ellipsis";
+    t.className = "n";
     const s = document.createElement("span"); s.className = "s " + n.status; s.textContent = `${SV[n.status] || n.status} · ${n.tools || 0} tools`;
     b.append(c, t, s); return b;
   }));
@@ -324,6 +326,7 @@ function say(who, text, col, owner = "lead") {
   w.className = "who"; w.textContent = who; if (col) w.style.color = col;
   d.dataset.node = owner; d.hidden = owner !== (focus || "lead");
   d.append(w, trunc(text, 1200)); box.append(d);
+  if (who === "✓" || who === "✕") d.dataset.done = "1";   // lets back-to-back results collapse into one row
   while (box.children.length > 600) box.firstChild.remove();
   box.scrollTop = box.scrollHeight;
 }
@@ -356,8 +359,8 @@ function onEv(e) {
     say(m.code, `← handback ${m.name || ""}${e.summary ? ": " + trunc(e.summary, 200) : ""}`, color(e.tool_use_id));
     say("DONE", e.summary || "done", color(e.tool_use_id), e.tool_use_id);
   } else if (e.type === "result") {
-    const bad = e.is_error || (e.subtype && e.subtype !== "success");
-    speak(bad ? "The run was interrupted, sir." : "Done, sir.");
+    const bad = e.is_error || (e.subtype && e.subtype !== "success"), prev = $("#msgs").lastElementChild;
+    if (prev && prev.dataset.done) prev.remove(); else speak(bad ? "The run was interrupted, sir." : "Done, sir.");
     say(bad ? "✕" : "✓", `${bad ? "interrupted/error" : "done"}${e.total_cost_usd != null ? " · $" + e.total_cost_usd.toFixed(2) : ""}${e.duration_ms != null ? " · " + (e.duration_ms / 1000).toFixed(1) + " s" : ""}`);
   } else if (e.type === "am_exit") say("—", "session ended");
 }
@@ -382,6 +385,7 @@ function syncLeadIdle() { layoutBlobs(); const b = blobs.get("lead"); b.status =
 function connect(id) {
   reset(); sid = id; store.set("am.brain", id || ""); connectedAt = Date.now();
   $("#empty").hidden = !!id;
+  document.body.classList.toggle("start", !id);
   $("#hmid").textContent = id ? "connecting…" : "new session";
   setBusy(false);
   if (!id) return;
@@ -484,17 +488,44 @@ fetch("/api/voice", { credentials: "same-origin" }).then(r => r.ok ? r.json() : 
   $("#spk").hidden = !v.tts; $("#mic").hidden = !v.stt; if (v.tts) setVoice(voiceOn);
 }).catch(() => {});
 
+// ---------- today's schedule on the start screen (Calm Week, if installed) ----------
+async function loadCal() {
+  let ev = [];
+  try { const r = await fetch("/api/calendar", { cache: "no-store", credentials: "same-origin" }); if (r.ok) ev = await r.json(); } catch {}
+  const now = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  $("#cal").hidden = !ev.length;
+  $("#cal").replaceChildren($("#cal h2"), ...ev.map(e => {
+    const d = document.createElement("div"), t = document.createElement("span"), b = document.createElement("b");
+    d.className = e.end <= now ? "past" : e.start <= now ? "now" : ""; d.style.setProperty("--c", e.color || "var(--dim)");
+    t.textContent = `${e.start}–${e.end}`; b.textContent = b.title = e.title; d.append(t, b); return d;
+  }));
+}
+loadCal(); setInterval(loadCal, 60000);
+
+// ---------- API-equivalent cost of all Claude Code usage on this machine ----------
+async function loadUsage() {
+  let u = null; const usd = v => "$" + v.toFixed(2);
+  try { const r = await fetch("/api/usage", { cache: "no-store", credentials: "same-origin" }); if (r.ok) u = await r.json(); } catch {}
+  $("#p-use").hidden = !(u && u.month && u.month.cost > 0);
+  if ($("#p-use").hidden) return;
+  $("#u-day").textContent = usd(u.today.cost); $("#u-mon").textContent = usd(u.month.cost);
+  const rows = u.models.slice(0, 3).map(m => { const d = document.createElement("div"); d.textContent = `${m.model}  ${usd(m.cost)}`; return d; });
+  if (u.unpriced && u.unpriced.length) { const d = document.createElement("div"); d.style.opacity = .6; d.textContent = "unpriced: " + u.unpriced.join(", "); rows.push(d); }
+  $("#u-mod").replaceChildren(...rows);
+}
+loadUsage(); setInterval(loadUsage, 60000);
+
 // ---------- boot ----------
-setInterval(() => {
-  $("#clock").textContent = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+function tick() {
+  const d = new Date();
+  $("#clock").textContent = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  $("#st-time").textContent = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  $("#st-date").textContent = d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   if (t0 !== null) { const s = Math.floor((Date.now() - t0) / 1000); $("#s-time").textContent = `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; }
-}, 1000);
+}
+setInterval(tick, 1000); tick();
 setInterval(loadSessions, 4000);
-resize(); brainCy = layoutTarget().cy; brainR = layoutTarget().R;
+resize(); { const L = layoutTarget(); brainCy = L.cy; brainR = L.R; brainCx = L.cx; }
 reset();
-loadSessions().then(() => {
-  const saved = store.get("am.brain"), live = sessions.filter(s => s.status !== "ended");
-  const pick = sessions.find(s => s.id === saved && s.status !== "ended") || live[live.length - 1];
-  if (pick) { connect(pick.id); $("#sess").value = pick.id; }
-});
+loadSessions();   // no auto-connect: the start screen stays until a prompt is sent or a session is picked
 requestAnimationFrame(frame);

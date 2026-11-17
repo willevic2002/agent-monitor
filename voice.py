@@ -19,6 +19,7 @@ _stt = None         # persistent worker: keeps the whisper model loaded between 
 _play = None        # pw-play process while speaking
 _tts = None         # (model path, persistent Piper worker)
 _tts_lock = threading.Lock()
+_say_lock = threading.Lock()   # one utterance at a time across all clients
 
 
 CONF = os.path.join(os.environ.get("AM_CONFIG_DIR") or os.path.expanduser("~/.config/agent-monitor"), "voice.json")
@@ -86,6 +87,10 @@ def tts(text):
 def say(text):
     """Speak text on this machine's default output. Played here, not in the WebKit window: its media stack
     needs extra GStreamer plugins, autoplay rights, and stalled on blob audio. Blocks until done or hush()."""
+    with _say_lock: _say(text)
+
+
+def _say(text):
     global _play
     wav = tts(text)
     fd, path = tempfile.mkstemp(prefix="am-tts-", suffix=".wav")

@@ -2,10 +2,10 @@
 """Live monitor for Claude Code / claude-dev-team agents. Stdlib only.
 
 Reads (read-only): ~/.claude/projects/**/*.jsonl transcripts, their subagents/, <cwd>/.claude/runtime/phase.json
-and ~/.claude/claude-dev-team.db. Serves index.html + /api/state on http://127.0.0.1:7777
+and ~/.claude/claude-dev-team.db. Serves brain.html + /api/state on http://127.0.0.1:7777
 """
 import json, os, glob, time, sqlite3, sys, re, hmac, secrets, threading
-import driver, voice
+import driver, voice, usage
 from urllib.parse import urlparse, parse_qs, unquote
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from graph import tail_lines, tool_label, node_log, reduce, events_from_transcript, AGENT_ID, TAIL
@@ -175,6 +175,28 @@ def state():
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+CALM = os.environ.get("AM_CALM_WEEK_DIR") or os.path.join(HOME, "calm-week")
+
+
+def calendar(day=None, root=None):
+    """One day's Calm Week blocks (today by default), read-only from its data files: its own server only runs while its window is open."""
+    day, data = day or time.strftime("%Y-%m-%d"), os.path.join(root or CALM, "data")
+    try: weeks = json.load(open(os.path.join(data, "state.json")))["weeks"]
+    except (OSError, ValueError, KeyError, TypeError): return []
+    try: cats = json.load(open(os.path.join(data, "template.json")))["categories"]
+    except (OSError, ValueError, KeyError, TypeError): cats = {}
+    out = []
+    try:
+        for w in weeks.values():
+            for b in w["blocks"]:
+                st = b.get("start") or ""
+                if not st.startswith(day + "T") or b.get("skipped"): continue
+                h, m = int(st[11:13]), int(st[14:16])
+                end = h * 60 + m + int(b["minutes"])
+                out.append({"start": st[11:16], "end": f"{end // 60:02d}:{end % 60:02d}", "title": str(b.get("title") or "")[:200],
+                            "color": (cats.get(b.get("category")) or {}).get("color")})
+    except (AttributeError, KeyError, TypeError, ValueError): return []
+    return sorted(out, key=lambda e: e["start"])
 MAX_BODY = 1024 * 1024  # 1 MiB
 ONCE_TTL, ONCE_MAX = 30, 16
 SID_RE = re.compile(r"^[0-9a-f-]{36}$")
@@ -263,11 +285,9 @@ class H(BaseHTTPRequestHandler):
                 return self._json(403, {"error": "invalid or expired"})
             to = "/brain" if (q.get("to") or [""])[0] == "brain" else "/"   # fixed whitelist: never an open redirect
             return self._send(303, extra=(("Location", to), ("Set-Cookie", f"am={self.server.token}; HttpOnly; SameSite=Strict; Path=/")))
-        if u.path in ("/", "/index.html"):
-            return self._send(200, open(os.path.join(HERE, "index.html"), "rb").read(), "text/html; charset=utf-8")
-        if u.path == "/brain":
+        if u.path in ("/", "/brain"):
             return self._send(200, open(os.path.join(HERE, "brain.html"), "rb").read(), "text/html; charset=utf-8")
-        if u.path in ("/app.js", "/brain.js"):
+        if u.path == "/brain.js":
             try: body = open(os.path.join(HERE, u.path[1:]), "rb").read()
             except OSError: return self._json(404, {"error": "not found"})
             return self._send(200, body, "text/javascript; charset=utf-8")
@@ -281,6 +301,8 @@ class H(BaseHTTPRequestHandler):
             return self._json(200, state())
         if u.path == "/api/sessions": return self._sessions()
         if u.path == "/api/voice": return self._json(200, voice.status())
+        if u.path == "/api/calendar": return self._json(200, calendar())
+        if u.path == "/api/usage": return self._json(200, usage.summary())
         m = re.fullmatch(r"/api/sessions/([0-9a-f]{32})/events", u.path)
         if m:
             s = driver.get(m.group(1))
