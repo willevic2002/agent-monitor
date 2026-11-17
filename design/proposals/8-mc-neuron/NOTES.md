@@ -1,0 +1,4 @@
+Idea: the neuron stays but is richer: ~3x more strands (380 lead / 300 per subagent, 1px, low alpha), monochrome amber/white/grey, glow sprite removed. Shape morphs: three lobe directions orbit and swell/recede out of phase, noise domain drifts per axis, axes stretch independently; the morph clock runs faster while the agent is active; lone brain also tilts as it spins.
+Layout D: header; left rail (tool calls, agents, tokens/cost); brain centrepiece with stats strip along its bottom; chat docked right at 40% width full height. Phone: brain on top, stats, chat below, rail hidden.
+Palette: graphite #0d0e10, amber #e8a317 accent, white data, red for errors/stop only.
+Known flaws: rail log shows only the newest 2-line entries; hollow dark core on the lone brain (rim-lit shading); not profiled on a real iGPU (about 23k line vertices per blob, 2 noise calls each); no pageerrors.

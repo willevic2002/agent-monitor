@@ -1,0 +1,62 @@
+:root{
+  --bg:#0d0e10; --panel:rgba(255,255,255,.025); --edge:rgba(255,255,255,.07); --text:#d9dbde; --dim:#8a8f96; --faint:rgba(255,255,255,.08);
+  --cyan:#9db4c8; --teal:#9db4c8; --green:#9db4c8; --amber:#b9a98f; --pink:#b9a0b0; --violet:#a4a3c4; --red:#c98585;
+  --mono:"JetBrainsMono Nerd Font","JetBrains Mono",ui-monospace,monospace;
+  --sans:"Inter","Geist",system-ui,sans-serif;
+}
+html,body{font:13px/1.55 var(--sans)}
+body:before{background:none}
+header,.ph,#stats span,#start span,#cal h2,#empty,.pill,form .who,#msgs .who,.tabs button,header a{letter-spacing:0;text-transform:none;font-family:var(--sans)}
+header{font-size:12px;color:var(--dim)}
+.dotlive{box-shadow:none;animation:none;background:var(--dim)}
+.tabs,.hb,header a,select,.btn{border-radius:6px;border-color:var(--edge)}
+.tabs button[aria-pressed=true]{background:rgba(255,255,255,.08);color:var(--text)}
+.hb[aria-pressed=true]{box-shadow:none;border-color:var(--edge);color:var(--text)}
+.panel{border:0;border-radius:14px;background:var(--panel);padding:16px 18px;gap:12px;backdrop-filter:none}
+.panel.hot{box-shadow:none;background:rgba(255,255,255,.045)}
+.ph{font-size:12px;color:var(--dim)}
+.ph .tag{display:none}
+.ph .t{font-weight:500;color:var(--text);font-size:13px}
+.ph .live{font-size:11px;color:var(--dim)}
+.ph .live:before{content:""}
+.big{font-weight:300;font-size:28px}
+.bar{height:2px}
+.bar i{box-shadow:none;background:var(--dim)}
+.agents button{padding:4px 6px;border-radius:6px;font-size:12px}
+.agents button[aria-pressed=true]{background:rgba(255,255,255,.06)}
+.agents .c{font-weight:500}
+.log,.log div,.tok .row,.checks{font-family:var(--mono);font-size:11px}
+.log .tool{font-weight:500}
+.ecg .cell{border:0;background:rgba(255,255,255,.03);border-radius:8px}
+.wave{border-radius:8px;border-color:var(--edge)}
+.wave.run{box-shadow:none;border-color:var(--dim)}
+.wave b{letter-spacing:0}
+.pill{background:rgba(13,14,16,.7);box-shadow:none;border:0;border-radius:6px;font-weight:500;font-size:11px;padding:3px 8px}
+#stats{gap:56px;top:50px}
+#stats b{font-size:30px;font-weight:200;text-shadow:none;letter-spacing:-.01em}
+#stats span{font-size:11px;color:var(--dim)}
+#tclock b,#start b{text-shadow:none;font-weight:200;color:var(--text)}
+#start span{font-size:13px}
+#cal h2{font-weight:500}
+#cal div{border-left:0;padding-left:0}
+.card{background:rgba(255,255,255,.05);border:0;border-radius:12px;box-shadow:none}
+.card button,.btn{border-radius:8px;font-family:var(--sans)}
+.card button.ok{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:500}
+.card button.no{color:var(--dim);border-color:var(--edge)}
+#msgs{gap:14px}
+#msgs div{background:none;border:0;border-radius:0;padding:0}
+#msgs .who{display:block;color:var(--dim);font-weight:400;font-size:11px;margin:0 0 2px}
+form{background:rgba(255,255,255,.04);border:0;border-radius:12px}
+form .who{background:transparent;color:var(--dim);padding:0;font-weight:400;font-size:11px}
+form input{font-family:var(--sans)}
+form button{background:rgba(255,255,255,.1);color:var(--text);box-shadow:none;font-weight:400}
+form button.stop{background:rgba(201,133,133,.2);color:var(--red);box-shadow:none}
+form button.mic{background:transparent;border:0}
+form button.mic.on{background:rgba(201,133,133,.2);color:var(--red);box-shadow:none}
+body.start form{border-radius:999px}
+body.start form:focus-within{border:0;background:rgba(255,255,255,.07)}
+body:not(.start) #cal{top:118px}
+@media (max-width:600px){#stats{gap:18px;width:100%;justify-content:center}#stats b{font-size:22px}#stats span{font-size:10px}header{line-height:1.2}}
+
+/* narrow: keep the header on one line */
+header>span{white-space:nowrap}#mname,#hmid{white-space:nowrap}@media (max-width:600px){#mname{display:none}header{gap:8px}}

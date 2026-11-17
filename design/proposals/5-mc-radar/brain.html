@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Monitor · Radar</title>
+<style>
+:root{
+  --bg:#0d0e10; --panel:#101113; --edge:#2c2e33; --text:#f2f2f0; --dim:#8b8d92; --faint:#26282c;
+  --amber:#e8a317; --red:#e5484d;
+  --mono:"JetBrainsMono Nerd Font","JetBrains Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;border-radius:0!important}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font:11px/1.35 var(--mono)}
+select{color-scheme:dark;background:var(--bg)!important;color:var(--text);border:1px solid var(--edge);font:inherit;padding:2px 6px}
+select option{background:#15161a;color:var(--text)}
+:focus-visible{outline:1px solid var(--amber);outline-offset:1px}
+#hud{position:fixed;inset:0;z-index:3;display:flex;flex-direction:column}
+.small-caps,header,#stats span,.ph,.pill,#cal h2,#start span,#empty{font-variant:small-caps;letter-spacing:.08em}
+header{flex:none;height:36px;display:flex;align-items:center;gap:12px;padding:0 12px;border-bottom:1px solid var(--edge);background:rgba(13,14,16,.95);font-size:11px;color:var(--dim)}
+header b{color:var(--text);font-weight:700}
+header>span{white-space:nowrap}
+.dotlive{width:7px;height:7px;background:var(--amber);animation:blink 1.6s infinite;flex:none}
+@keyframes blink{50%{opacity:.25}}
+#hmid{color:var(--text)}
+.sp{flex:1}
+#sess{max-width:32vw;text-overflow:ellipsis}
+#clock{color:var(--text);min-width:40px;text-align:right}
+.hb{background:transparent;border:1px solid var(--edge);padding:4px 8px;cursor:pointer;color:var(--dim);font:inherit}
+.hb svg,form button svg{display:block}
+.hb[aria-pressed=true]{color:var(--amber);border-color:var(--amber)}
+.panel{min-height:0;background:var(--panel);border:1px solid var(--edge);padding:6px 8px;overflow:hidden;display:flex;flex-direction:column;gap:5px;position:relative;margin:0 -1px -1px 0}
+.panel.hot{border-color:var(--amber)}
+.ph{flex:none;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dim);border-bottom:1px solid var(--edge);padding-bottom:4px}
+.ph .tag{color:var(--amber)}.ph .tag:after{content:" /"}
+.ph .t{color:var(--text);font-weight:700}
+.ph .live{margin-left:auto;color:var(--amber);font-size:10px}
+.big{font-size:20px;font-weight:600;color:var(--text)}
+.small{font-size:10px;color:var(--dim)}
+.bar{height:2px;background:var(--faint);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--c,var(--amber));transition:width .5s}
+.log{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;font-size:10.5px;-webkit-mask-image:linear-gradient(transparent,#000 22px);mask-image:linear-gradient(transparent,#000 22px)}
+.log div{flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:in .35s ease}
+.log .ts{color:var(--dim)}.log .tool{color:var(--text);font-weight:700}
+.log .who{font-weight:700;margin-right:6px}
+@keyframes in{from{opacity:0;transform:translateY(4px)}}
+.agents{display:flex;flex-direction:column;gap:3px;overflow:hidden;min-height:0;flex:1}
+.agents button{all:unset;cursor:pointer;display:grid;grid-template-columns:44px 1fr auto;gap:8px;align-items:center;font-size:11px;padding:2px 4px}
+.agents button[aria-pressed=true]{background:rgba(232,163,23,.12)}
+.agents .c{color:var(--c);font-weight:700}.agents .s{color:var(--dim);font-size:10px}
+.agents .s.running{color:var(--amber)}.agents .s.waiting{color:var(--amber)}.agents .s.error{color:var(--red)}
+.tok{display:flex;flex-direction:column;gap:5px}
+.tok .row{display:grid;grid-template-columns:54px 1fr 50px;gap:8px;align-items:center;font-size:10px}
+.pill{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font-size:10px;font-weight:600;padding:1px 6px;border:1px solid var(--edge);color:var(--text);background:rgba(13,14,16,.92);cursor:pointer;transition:opacity .5s}
+.pill i{font-style:normal;color:var(--c);margin-right:6px}
+.pill.dim{opacity:.3}
+#labels{position:absolute;inset:0;pointer-events:none}#labels .pill{pointer-events:auto}
+#stats{display:flex;border-bottom:1px solid var(--edge);background:rgba(13,14,16,.95);flex:none}
+#stats>div{padding:3px 16px;border-left:1px solid var(--edge)}#stats>div:first-child{border-left:0}
+#stats b{display:block;font-size:17px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+#stats span{font-size:10px;color:var(--dim);white-space:nowrap}
+#ctitle{display:none}
+.card{width:100%;background:var(--panel);border:1px solid var(--amber);padding:8px 10px;display:flex;flex-direction:column;gap:6px;transition:opacity .4s,transform .4s}
+.card.gone{opacity:0;transform:translateY(8px)}
+.card code{color:var(--text);font:inherit;word-break:break-all;max-height:4.6em;overflow:auto;white-space:pre-wrap}
+.card .why{color:var(--dim);font-size:11px}
+.card .btns{display:flex;gap:8px}
+.card button,.btn{font:inherit;font-size:11px;padding:4px 12px;cursor:pointer;border:1px solid var(--edge);background:transparent;color:var(--text)}
+.card button.ok{background:var(--amber);border-color:var(--amber);color:#0d0e10;font-weight:700}
+.card button.no{color:var(--red);border-color:var(--red)}
+#chat{gap:6px}
+#msgs{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:5px}
+#msgs div{flex:none;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;border-left:1px solid var(--edge);padding:2px 8px;animation:in .3s}
+#msgs .who{color:var(--amber);font-weight:700;margin-right:8px;font-variant:small-caps;letter-spacing:.06em}
+#cards{display:flex;flex-direction:column;gap:6px;max-height:45%;overflow:auto;flex:none}#cards:empty{display:none}
+form{flex:none;display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:#111214;border:1px solid var(--edge);padding:4px 4px 4px 8px}
+form .who{font-size:10px;color:var(--amber);font-variant:small-caps;letter-spacing:.08em}
+form input{background:transparent;border:0;color:var(--text);font:inherit;outline:none;padding:5px 0}
+form #q{flex:1 1 200px;min-width:0}
+form .cwd{flex:0 1 150px;min-width:0;color:var(--dim);border:0;border-right:1px solid var(--edge)!important;outline:0}
+form select.cwd{flex:0 0 auto}
+form button{width:26px;height:26px;border:0;background:var(--amber);color:#0d0e10;font-weight:700;cursor:pointer}
+form button.stop{background:var(--red);color:#fff}
+form button.mic{background:transparent;color:var(--dim);border:1px solid var(--edge)}
+form button.mic.on{background:var(--red);color:#fff}
+form:focus-within{border-color:var(--amber)}
+#err{color:var(--red);margin:0;font-size:11px;flex:none}#err:empty{display:none}
+#empty{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:var(--dim);font-size:11px;pointer-events:none;text-align:center;padding:0 12px;width:100%}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:default}
+.gbox{position:relative;min-height:0;overflow:hidden;background:#0d0e10;border:1px solid var(--edge);margin:0 -1px -1px 0}
+/* start screen */
+#start{position:fixed;top:57vh;left:0;right:0;z-index:3;display:none;flex-direction:column;align-items:center;gap:10px;pointer-events:none}
+body.start #start{display:flex}
+#start b{font:300 clamp(48px,8vw,96px)/1 system-ui,sans-serif;color:#fff;letter-spacing:-.02em}
+#start span{font-size:11px;letter-spacing:.2em;color:var(--dim)}
+#cal{position:fixed;top:44px;left:50%;transform:translateX(-50%);z-index:4;max-width:calc(100vw - 32px);display:none;gap:18px;align-items:baseline;overflow:hidden}
+#cal:not([hidden]){display:flex}
+#cal h2{margin:0;flex:none;font-size:11px;font-weight:700;color:var(--dim)}
+#cal div{flex:none;display:flex;gap:8px;align-items:baseline;border-left:1px solid var(--amber);padding:2px 0 2px 8px;white-space:nowrap}
+#cal div span{color:var(--dim);flex:none}
+#cal div b{font-weight:400;max-width:18ch;overflow:hidden;text-overflow:ellipsis}
+#cal .past{display:none}#cal .now b{color:#fff;font-weight:700}
+body.start #stats,body.start #empty,body.start #labels,body.start #hmid,body.start #clock,body.start #chat .ph,body.start #msgs,body.start #cards,body.start form .who,body.start .gone-on-start{display:none!important}
+body.start header{opacity:.4;transition:opacity .3s}body.start header:hover,body.start header:focus-within{opacity:1}
+body.start #chat{position:fixed;bottom:7vh;left:0;right:0;margin:0 auto;width:min(620px,calc(100vw - 32px));background:none;border:0;padding:0;overflow:visible;z-index:5}
+body.start form{flex-wrap:nowrap}body.start form .cwd{flex:0 1 110px}
+body.start #err{text-align:center}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* narrow: globe/radar on top, chat below, side panels dropped */
+@media (max-width:899px){
+  #hmid,#mname,#cal,.hide-narrow{display:none!important}
+  header{gap:8px;padding:0 8px}
+  #stats{display:grid;grid-template-columns:repeat(4,1fr)}#stats>div{padding:3px 8px}#stats b{font-size:14px}
+}
+form input:focus-visible,form select:focus-visible{outline:0}
+@media (max-width:899px){#labels .pill:not(:first-child){display:none}}
+#grid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,42fr) minmax(0,58fr);padding:0 1px 1px 0}
+.col{min-height:0;min-width:0;display:flex;flex-direction:column}
+#p-radar{flex:2 1 0;padding:6px 0 0}
+#p-radar .ph{margin:0 8px}
+#p-radar .gbox{flex:1;border:0;margin:0}
+#p-log{flex:1 1 0}
+.row2{flex:0 0 clamp(150px,26vh,230px);display:flex;min-height:0}.row2 .panel{flex:1 1 0;min-width:0}
+#chat{height:100%}
+body:not(.start) #cal{top:36px;right:0;left:auto;transform:none;height:46px;align-items:center;padding:0 12px;max-width:calc(100vw - 520px)}
+body.start #grid{display:block}
+body.start .col{display:block}
+body.start #p-log,body.start .row2{display:none}
+body.start #p-radar{position:fixed;top:84px;left:0;right:0;height:48vh;border:0;background:none;padding:0}
+body.start #p-radar .ph{display:none}
+body.start .gbox{border:0;background:none}
+@media (max-width:899px){
+  #grid{grid-template-columns:1fr;grid-template-rows:30vh minmax(0,1fr)}
+  .col{display:block}#p-log,.row2{display:none}
+  #p-radar{height:100%}
+}
+</style>
+</head>
+<body class="start">
+<div id="hud">
+  <header>
+    <span class="dotlive" id="dot"></span><span><b>Agent Monitor</b><span id="mname"> · Radar</span></span>
+    <span id="hmid">no session</span>
+    <span class="sp"></span>
+    <select id="sess" aria-label="Session" class="btn"></select>
+    <button type="button" id="spk" class="hb" aria-pressed="false" title="Voice: read the lead's replies aloud" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg></button>
+    <span id="clock"></span>
+  </header>
+  <div id="stats">
+    <div><b id="s-agents">0</b><span>subagents</span></div>
+    <div><b id="s-tools">0</b><span>tool calls</span></div>
+    <div><b id="s-tok">0</b><span>tokens</span></div>
+    <div><b id="s-time">00:00</b><span>session time</span></div>
+  </div>
+<div id="grid">
+<div class="col" id="c-left">
+<section class="panel" id="p-radar"><div class="ph" style="--c:var(--amber)"><span class="tag">01</span><span class="t">Radar</span></div><div class="gbox"><canvas id="gl" aria-hidden="true"></canvas><div id="labels"></div><div id="empty">Type a prompt on the right · the lead and subagents appear here</div></div></section>
+<section class="panel" id="p-log" style="--c:var(--amber)"><div class="ph"><span class="tag">02</span><span class="t">Tool calls</span><span class="live" id="logf">all</span></div>
+      <div class="log" id="log"></div></section>
+<div class="row2">
+<section class="panel" id="p-ag" style="--c:var(--amber)"><div class="ph"><span class="tag">03</span><span class="t">Agents</span><span class="live" id="nag">0</span></div>
+      <div class="agents" id="agents"></div></section>
+<section class="panel" id="p-tok" style="--c:var(--amber)"><div class="ph"><span class="tag">04</span><span class="t">Tokens · cost</span></div>
+      <div><span class="big" id="cost">$0.00</span> <span class="small" id="toktot">0 tok</span></div>
+      <div class="tok" id="tok"></div></section>
+</div></div>
+<section class="panel" id="chat" style="--c:var(--amber)"><div class="ph"><span class="tag">05</span><span class="t">Chat</span><span class="live" id="chatf" title="Back to the lead chat" style="cursor:pointer">lead</span></div>
+      <div id="msgs" aria-live="polite"></div>
+      <div id="cards" aria-live="assertive"></div>
+      <form id="f"><span class="who">LEAD</span><input id="cwd" class="cwd" aria-label="Working directory" title="Working directory for a new session" autocomplete="off"><select id="mode" class="cwd" aria-label="Permission mode" title="Permission mode"><option value="default">Ask me</option><option value="acceptEdits">Accept edits</option><option value="auto">Auto — runs on its own</option><option value="plan">Plan mode</option></select><input id="q" autofocus placeholder="Ask the lead anything… (slash commands work too)" autocomplete="off" aria-label="Prompt"><button type="button" id="mic" class="mic" aria-label="Hold to talk (or hold Space)" title="Hold to talk (or hold Space outside the text field)" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg></button><button id="go" aria-label="Send">↑</button><button type="button" id="stop" class="stop" aria-label="Stop" hidden>■</button></form>
+      <p id="err" role="alert"></p>
+    </section>
+</div></div>
+<aside id="cal" aria-label="Today's schedule" hidden><h2>Today</h2></aside>
+<div id="start"><b id="st-time"></b><span id="st-date"></span></div>
+<script src="/vendor/three.min.js"></script>
+<script src="/brain.js"></script>
+</body>
+</html>

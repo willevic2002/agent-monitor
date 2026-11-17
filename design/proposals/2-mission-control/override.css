@@ -1,0 +1,51 @@
+:root{
+  --bg:#0d0e10; --panel:rgba(20,21,24,.96); --edge:#2c2e33; --text:#f2f2f0; --dim:#8b8d92; --faint:#26282c;
+  --cyan:#e8a317; --teal:#e8a317; --green:#e8a317; --pink:#e8a317; --amber:#e8a317; --violet:#e8a317; --red:#e5484d;
+}
+html,body{font-size:11px;line-height:1.3}
+body:before{background:none!important}
+*{border-radius:0!important}
+.dotlive{box-shadow:none;background:var(--amber);border-radius:0!important}
+header{height:36px;border-bottom:1px solid var(--edge);background:rgba(13,14,16,.9);font-size:10px;letter-spacing:.08em;font-variant:small-caps;text-transform:none}
+header a,.hb,select,.tabs{border-radius:1px!important;border-color:var(--edge)}
+.hb[aria-pressed=true]{box-shadow:none;color:var(--amber);border-color:var(--amber)}
+.side{top:46px;gap:0}
+.panel{border:1px solid var(--edge);padding:6px 8px;gap:5px;backdrop-filter:none}
+.panel+.panel{border-top:0}
+.panel.hot{box-shadow:none;border-color:var(--amber)}
+.ph{font-size:10px;letter-spacing:.08em;font-variant:small-caps;text-transform:none;border-bottom:1px solid var(--edge);padding-bottom:4px}
+.ph .tag{background:none;color:var(--amber);padding:0;font-weight:400}
+.ph .tag:after{content:" /"}
+.ph .t{color:var(--text)}
+.ph .live{color:var(--amber)}
+.big{font-size:20px;font-weight:600}
+.bar{height:2px}.bar i{box-shadow:none;background:var(--amber)}
+.ecg .cell{border-color:var(--edge)}
+.agents button[aria-pressed=true]{background:rgba(232,163,23,.12)}
+.log{font-size:10.5px}
+.pill{border:1px solid var(--edge);box-shadow:none;background:rgba(13,14,16,.92);letter-spacing:.06em;font-weight:600;font-variant:small-caps;text-transform:none;font-size:10px}
+.pill i{color:var(--amber)}
+.wave{border-color:var(--edge)}.wave.run{box-shadow:none;border-color:var(--amber)}.wave.run b{color:var(--amber)}.wave.done b{color:var(--text)}
+#stats{top:44px;gap:0;border:1px solid var(--edge);background:rgba(13,14,16,.94);text-align:left}
+#stats>div{padding:3px 16px;border-left:1px solid var(--edge)}
+#stats>div:first-child{border-left:0}
+#stats b{text-shadow:none;font-size:17px;color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+#stats span{font-size:9px;letter-spacing:.08em;font-variant:small-caps;text-transform:none;color:var(--dim)}
+#tclock b,#start b{text-shadow:none}
+#start span,#empty,#cal h2{letter-spacing:.12em;font-variant:small-caps;text-transform:none}
+#cal{top:92px}
+#cal div{border-left-color:var(--amber)}
+.card{border-color:var(--amber);box-shadow:none}
+.card button.ok{background:var(--amber);border-color:var(--amber);color:#0d0e10}
+.card button.no{color:var(--red);border-color:var(--red)}
+#msgs div{background:none;border:0;border-left:1px solid var(--edge);padding:2px 8px}
+#msgs .who{color:var(--amber);font-weight:600;font-variant:small-caps;letter-spacing:.06em}
+form{background:#111214;padding:4px 4px 4px 8px;border-color:var(--edge)}
+form .who{letter-spacing:.08em;background:none;color:var(--amber);padding:0;font-variant:small-caps;text-transform:none;font-size:10px}
+form button{width:26px;height:26px;border-radius:1px!important;background:var(--amber);color:#0d0e10;box-shadow:none}
+form button.stop{background:var(--red);box-shadow:none;color:#fff}
+form button.mic{background:transparent;color:var(--dim);border:1px solid var(--edge)}
+form button.mic.on{background:var(--red);box-shadow:none;animation:none;color:#fff}
+body.start form{border-radius:1px!important}
+body.start form:focus-within{border-color:var(--amber)}
+header>span{white-space:nowrap}#mname,#hmid{white-space:nowrap}@media (max-width:600px){#mname{display:none}header{gap:8px}}

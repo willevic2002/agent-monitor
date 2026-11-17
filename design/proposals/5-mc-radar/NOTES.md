@@ -1,0 +1,4 @@
+Brain: 2D canvas radar. Lead = square at centre, subagents = nodes on 3 concentric rings, 1px lead->node lines, amber sweep arm + wake while anything runs, nodes ring-pulse on tool calls/permission (existing pulse()), done agents dim to 40%. Click a node to focus it.
+Layout A: stats strip under header; left = radar, tool calls, agents|tokens; right 58% = full-height chat. Start screen: radar + clock + slim prompt bar. Phone: radar over chat, side panels hidden.
+Palette: graphite #0d0e10, amber #e8a317 accent, white/grey data, red only for error/stop. PAL recoloured amber/white/grey. Min text 10px.
+Known flaws: only newest 6 subagents drawn; nodes are only distinguished by tone + label (amber/white/grey is low-variety); labels can overlap when several agents share a ring; tool-call panel is mostly empty for short sessions; three.js is no longer used (script tag kept).

@@ -1,0 +1,51 @@
+:root{
+  --bg:#0a0a0a; --panel:rgba(17,17,17,.94); --edge:#262626; --text:#ededed; --dim:#8a8a8a; --faint:#232323;
+  --cyan:#8b93d9; --teal:#8b93d9; --green:#7fb88f; --pink:#8b93d9; --amber:#c9a46a; --violet:#8b93d9; --red:#e5484d;
+  --ui:"Inter","Geist",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+html,body{font:13px/1.5 var(--ui)}
+body:before{background:none!important}
+.dotlive{box-shadow:none;background:var(--green)}
+header,.ph,.tabs button,#stats span,#cal h2,#empty,header a,.wave b,#tclock .k,#start span,.pill,form .who{letter-spacing:0!important;text-transform:none!important;font-family:var(--ui)}
+header{font-size:12px}
+header a,.hb,select{border-radius:6px}
+.hb[aria-pressed=true]{box-shadow:none;color:var(--text);border-color:#555}
+.panel{border-radius:6px;backdrop-filter:none}
+.panel.hot{box-shadow:none;border-color:#3a3a3a}
+.ph{font-size:12px;gap:6px}
+.ph .tag{background:none;color:var(--dim);padding:0;font-weight:400;font-family:var(--mono)}
+.ph .t{font-weight:600}
+.ph .live{color:var(--dim);font-size:11px}
+.ph .live:before{content:"";}
+.big{font-weight:600;letter-spacing:0}
+.bar i{box-shadow:none}
+.log,.tok,.checks,.agents,.counts,ul.plan{font-family:var(--mono);font-size:11px}
+.agents button,.agents button[aria-pressed=true]{border-radius:4px}
+.agents button[aria-pressed=true]{background:#1f1f1f}
+.agents .c{font-weight:600}
+.pill{border-radius:4px;border-color:#333;box-shadow:none;font-weight:500;font-size:11px;background:rgba(10,10,10,.9)}
+.pill i{color:var(--dim)}
+.wave{border-radius:6px}.wave.run{box-shadow:none}
+#stats b{text-shadow:none;font:600 18px var(--mono)}
+#stats span{font-size:11px}
+#tclock b,#start b{text-shadow:none}
+#start span{font-size:12px}
+.card{border-radius:6px;box-shadow:none;border-color:#3a3a3a}
+.card button,.btn{border-radius:6px}
+.card button.ok{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:600}
+.card button.no{color:var(--red);border-color:#4a2528}
+#msgs div{background:none;border:0;border-bottom:1px solid #1c1c1c;border-radius:0;padding:8px 2px}
+#msgs .who{color:var(--dim);font-weight:500;font-size:11px;display:block;margin:0 0 2px}
+form{border-radius:8px;background:#111}
+form .who{background:none;color:var(--dim);padding:0;font-weight:500;font-size:11px}
+form button{width:28px;height:28px;border-radius:6px;box-shadow:none;background:var(--text);color:var(--bg)}
+form button.stop{background:var(--red);box-shadow:none;color:#fff}
+form button.mic{background:transparent;color:var(--dim)}
+form button.mic.on{background:var(--red);box-shadow:none;animation:none;color:#fff}
+body.start form{border-radius:10px}
+.wave.run b,.wave.done b{color:var(--text)}
+#cal h2{font-size:11px;font-weight:500}
+#cal div{border-left-color:#444;border-radius:0}
+#cal .now b{color:var(--text)}
+body.start form:focus-within{border-color:#555}
+header>span{white-space:nowrap}#mname,#hmid{white-space:nowrap}@media (max-width:600px){#mname{display:none}header{gap:8px}}
